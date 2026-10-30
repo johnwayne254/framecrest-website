@@ -39,7 +39,7 @@
     showApp(); await refresh();
   }
   async function refresh(){
-    let q=db.from("projects").select("id,project_code,name,client_id,service,quantity,editor_id,due_date,status,qa_status,created_at,brief,folder_url,clients(name),profiles:editor_id(full_name)").order("created_at",{ascending:false});
+    let q=db.from("projects").select("id,project_code,name,client_id,service,quantity,editor_id,due_date,status,qa_status,created_at,brief,folder_url,clients(name),profiles!projects_editor_id_fkey(full_name)").order("created_at",{ascending:false});
     const {data,error}=await q;
     if(error){toast(error.message);return;} projects=data||[];
     if(isAdmin()){
