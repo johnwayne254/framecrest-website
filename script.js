@@ -86,11 +86,15 @@
   const submitButton = form?.querySelector('button[type="submit"]');
   const endpointIsValid = /^https:\/\/formspree\.io\/f\/[A-Za-z0-9]+$/.test(formEndpoint);
 
-  if (form && submitButton && !endpointIsValid) {
-    submitButton.disabled = true;
-    submitButton.textContent = "Enquiry form coming soon";
-    if (status) status.textContent =
-      "This enquiry form is not active yet. It will be available once the studio's receiving email is configured.";
+  if (form && submitButton) {
+    if (!endpointIsValid) {
+      submitButton.disabled = true;
+      submitButton.textContent = "Enquiry form coming soon";
+      if (status) status.textContent =
+        "This enquiry form is not active yet. It will be available once the studio's receiving email is configured.";
+    } else {
+      submitButton.disabled = false;
+    }
   }
 
   form?.addEventListener("submit", async event => {
