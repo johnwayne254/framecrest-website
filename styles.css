@@ -887,3 +887,10 @@ img{color:#747b61}
 @media(max-width:650px){
   .portfolio-flexible-note{padding:15px 16px;font-size:9px}
 }
+
+
+/* Reset older staggered portfolio offsets so all 12 cards align evenly. */
+.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(n){
+  width:auto;
+  margin:0;
+}
