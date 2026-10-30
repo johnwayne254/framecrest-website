@@ -55,3 +55,8 @@ img{color:#747b61}
   .will-reveal{opacity:1;transform:none;transition:none}
   .services-list article{transition:none}
 }
+
+.not-found{min-height:62vh;padding:110px 8.5%;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+.not-found h1{font-size:clamp(58px,7vw,90px);margin:0 0 22px}
+.not-found>p:not(.eyebrow){max-width:430px;color:#72776d;font-size:13px;line-height:1.9;margin:0 0 30px}
+@media(max-width:650px){.not-found{min-height:65vh;padding:75px 6%}.not-found h1{font-size:60px}}
