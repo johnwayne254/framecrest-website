@@ -18,7 +18,7 @@ A responsive, editorial-style portfolio website for FrameCrest, built with plain
 3. Select the `johnwayne254/framecrest-website` repository and the `main` branch.
 4. Choose **None** as the framework preset.
 5. Leave the build command empty.
-6. Set the build output directory to `/` (the repository root).
+6. Set the build output directory to `.` (the repository root).
 7. Deploy. Cloudflare will provide a temporary `pages.dev` address for testing.
 
 ## Required pre-launch configuration
