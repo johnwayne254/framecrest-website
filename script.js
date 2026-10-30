@@ -140,7 +140,7 @@
 
   if (workLightbox && workLightboxImage && workLightboxCaption &&
       typeof workLightbox.showModal === "function") {
-    document.querySelectorAll(".home-page .work-image-open").forEach(link => {
+    document.querySelectorAll(".work-image-open").forEach(link => {
       link.addEventListener("click", event => {
         const thumbnail = link.querySelector("img");
         if (!thumbnail) return;
