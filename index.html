@@ -63,26 +63,37 @@
         <p class="section-description">A look at the visual standard we aim for: balanced light, natural colour and clean property presentation. The images below are illustrative references, not client projects.</p>
       </div>
       <div class="work-grid">
-        <article class="work-card work-large">
-          <a href="contact.html" aria-label="Discuss interior imagery project">
-            <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1400&q=85" alt="Elegant contemporary living room with natural light" loading="lazy" decoding="async">
+        <article class="work-card">
+          <a class="work-image-open" href="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=2000&q=92" data-lightbox-title="Natural interiors — Interior presentation" aria-label="Open larger view of natural interior imagery">
+            <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1000&q=85" alt="Elegant contemporary living room with natural light" loading="lazy" decoding="async">
             <span class="work-index">01</span>
+            <span class="work-zoom" aria-hidden="true">VIEW IMAGE ↗</span>
           </a>
           <div class="work-caption"><div><h3>Natural interiors</h3><p>INTERIOR PRESENTATION</p></div><span>↗</span></div>
         </article>
         <article class="work-card">
-          <a href="contact.html" aria-label="Discuss architectural imagery project">
+          <a class="work-image-open" href="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=2000&q=92" data-lightbox-title="Clear perspective — Architecture and exteriors" aria-label="Open larger view of residential architecture">
             <img src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1000&q=85" alt="Minimalist residential architecture and garden" loading="lazy" decoding="async">
             <span class="work-index">02</span>
+            <span class="work-zoom" aria-hidden="true">VIEW IMAGE ↗</span>
           </a>
           <div class="work-caption"><div><h3>Clear perspective</h3><p>ARCHITECTURE & EXTERIORS</p></div><span>↗</span></div>
         </article>
         <article class="work-card">
-          <a href="contact.html" aria-label="Discuss property detail imagery project">
+          <a class="work-image-open" href="https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=2000&q=92" data-lightbox-title="Considered detail — Room and property details" aria-label="Open larger view of a styled interior">
             <img src="https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1000&q=85" alt="Warm modern interior detail with carefully styled furniture" loading="lazy" decoding="async">
             <span class="work-index">03</span>
+            <span class="work-zoom" aria-hidden="true">VIEW IMAGE ↗</span>
           </a>
           <div class="work-caption"><div><h3>Considered detail</h3><p>ROOM & PROPERTY DETAILS</p></div><span>↗</span></div>
+        </article>
+        <article class="work-card">
+          <a class="work-image-open" href="assets/services/studio-property.webp" data-lightbox-title="The considered space — Property presentation" aria-label="Open larger view of a property interior">
+            <img src="assets/services/studio-property.webp" alt="Contemporary property interior used to showcase the studio's visual approach" loading="lazy" decoding="async">
+            <span class="work-index">04</span>
+            <span class="work-zoom" aria-hidden="true">VIEW IMAGE ↗</span>
+          </a>
+          <div class="work-caption"><div><h3>The considered space</h3><p>PROPERTY PRESENTATION</p></div><span>↗</span></div>
         </article>
       </div>
       <p class="portfolio-note">Illustrative imagery is used here while the FrameCrest client portfolio is being prepared.</p>
@@ -161,6 +172,14 @@
       </form>
     </section>
   </main>
+
+  <dialog class="work-lightbox" id="work-lightbox" aria-label="Selected work image preview">
+    <button class="work-lightbox-close" type="button" aria-label="Close image preview">×</button>
+    <figure>
+      <img id="work-lightbox-image" src="" alt="">
+      <figcaption id="work-lightbox-caption"></figcaption>
+    </figure>
+  </dialog>
 
   <footer class="site-footer">
     <a class="wordmark footer-wordmark" href="#home"><span class="brand-mark">F<span>C</span></span><span class="brand-name">FRAMECREST<small>VISUAL STUDIO</small></span></a>
