@@ -3,7 +3,11 @@
 A responsive, editorial-style portfolio website for FrameCrest, built with plain HTML, CSS and vanilla JavaScript. It has no build tools, framework dependencies or paid libraries.
 
 ## Website files
-- `index.html` — homepage, selected work, services, approach, process and contact sections
+- `index.html` — homepage and studio introduction
+- `portfolio.html` — selected work gallery
+- `services.html` — service descriptions and workflow
+- `about.html` — studio approach and values
+- `contact.html` — enquiry form and WhatsApp contact
 - `styles.css` — responsive layouts and visual styling
 - `script.js` — mobile navigation, WhatsApp and Instagram configuration, and contact form handling
 - `assets/favicon.svg` — browser tab icon
