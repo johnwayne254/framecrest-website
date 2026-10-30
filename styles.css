@@ -1576,3 +1576,10 @@ img{color:#747b61}
   .contact-bottom-cta h2{font-size:38px}
   .contact-bottom-cta>div{margin-top:25px}
 }
+
+
+/* The About page class is applied to the body; avoid inheriting old section padding. */
+body.about-page{
+  padding-top:0!important;
+  padding-bottom:0!important;
+}
