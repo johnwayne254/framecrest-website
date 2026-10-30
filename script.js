@@ -30,7 +30,7 @@
       link.target = "_blank";
       link.rel = "noopener";
     } else {
-      link.href = "#contact-form";
+      link.href = "contact.html#contact-form";
       link.addEventListener("click", () => {
         const status = document.getElementById("form-status");
         if (status) status.textContent =
