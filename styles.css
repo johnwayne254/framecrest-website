@@ -894,3 +894,29 @@ img{color:#747b61}
   width:auto;
   margin:0;
 }
+
+
+/* Preserve the 2-column x 6-row portfolio, with masonry-style image heights. */
+.portfolio-page .portfolio-page-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:start;
+}
+.portfolio-page .portfolio-page-grid .portfolio-work-card>a.work-image-open{
+  height:auto;
+  aspect-ratio:4 / 3;
+}
+.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(6n + 1)>a.work-image-open,
+.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(6n + 4)>a.work-image-open,
+.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(6n + 6)>a.work-image-open{
+  aspect-ratio:4 / 5;
+}
+.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(6n + 2)>a.work-image-open,
+.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(6n + 3)>a.work-image-open,
+.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(6n + 5)>a.work-image-open{
+  aspect-ratio:5 / 4;
+}
+@media(max-width:650px){
+  .portfolio-page .portfolio-page-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
