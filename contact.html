@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#151715">
+  <meta name="description" content="FrameCrest — real estate image editing and considered property visuals.">
+  <title>Contact — FrameCrest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="index.html" aria-label="FrameCrest home">
+      <span class="brand-mark">F<span>C</span></span>
+      <span class="brand-name">FRAMECREST<small>VISUAL STUDIO</small></span>
+    </a>
+    <button class="menu-toggle" aria-label="Open navigation" aria-expanded="false"><span></span><span></span></button>
+    <nav class="main-nav" aria-label="Main navigation">
+      <a href="portfolio.html">Selected work</a>
+      <a href="services.html">Services</a>
+      <a href="about.html">Our approach</a>
+      <a class="nav-contact" href="contact.html">Start a project <span>↗</span></a>
+    </nav>
+  </header><main>
+  <section class="page-hero">
+    <p class="eyebrow">LET'S TALK</p>
+    <h1>Have a project<br><em>in mind?</em></h1>
+    <p>Tell us a little about what you're working on. We'll use your brief to understand the project and discuss the next steps.</p>
+  </section>
+  <section class="contact-section page-contact" id="contact">
+    <div class="contact-intro">
+      <p class="eyebrow">START A CONVERSATION</p>
+      <h2>Let's make<br>something <em>stand out.</em></h2>
+      <p>Share the service you need, a rough image count and your expected timeline. We'll be in touch once the enquiry form is connected.</p>
+      <a class="contact-whatsapp" data-whatsapp href="#contact-form">Prefer WhatsApp? Start a conversation <span>↗</span></a>
+    </div>
+    <form class="contact-form" id="contact-form">
+      <div class="form-row">
+        <label>Your name<input name="name" autocomplete="name" required placeholder="Your name"></label>
+        <label>Email address<input name="email" type="email" autocomplete="email" required placeholder="you@example.com"></label>
+      </div>
+      <label>What do you need help with?
+        <select name="service" required><option value="">Choose a service</option><option>Real estate photo editing</option><option>HDR blending</option><option>Image enhancement</option><option>Creative visual support</option><option>Something else</option></select>
+      </label>
+      <label>Tell us about your project<textarea name="message" rows="5" required placeholder="A few details about your project, image count and timeline..."></textarea></label>
+      <button class="button button-light" type="submit">Send enquiry <span>↗</span></button>
+      <p class="form-status" id="form-status" role="status" aria-live="polite">The enquiry form is awaiting its secure submission service setup.</p>
+    </form>
+  </section>
+</main>
+  <footer class="site-footer">
+    <a class="wordmark footer-wordmark" href="index.html"><span class="brand-mark">F<span>C</span></span><span class="brand-name">FRAMECREST<small>VISUAL STUDIO</small></span></a>
+    <p>Property imagery, thoughtfully finished.</p>
+    <div class="footer-links"><a href="portfolio.html">Work</a><a href="services.html">Services</a><a href="about.html">About</a><a href="contact.html">Contact</a><a data-instagram href="https://www.instagram.com/" target="_blank" rel="noopener">Instagram ↗</a></div>
+    <small>© <span id="year"></span> FrameCrest. All rights reserved.</small>
+  </footer>
+  <a class="floating-whatsapp" data-whatsapp href="#contact-form" aria-label="Chat with FrameCrest on WhatsApp">WA</a>
+  <script src="script.js"></script>
+</body>
+</html>
