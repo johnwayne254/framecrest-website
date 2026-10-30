@@ -1,96 +1,152 @@
 (() => {
+  const config = window.FRAMECREST_CONFIG || {};
+  const cleanPhone = String(config.whatsappNumber || "").replace(/\D/g, "");
+  const whatsappReady = /^\d{8,15}$/.test(cleanPhone);
+  const formEndpoint = String(config.formspreeEndpoint || "").trim();
+  const instagramUrl = String(config.instagramUrl || "").trim();
+
+  // Mobile navigation
   const menuButton = document.querySelector(".menu-toggle");
   const nav = document.querySelector(".main-nav");
 
+  const closeMenu = () => {
+    nav?.classList.remove("open");
+    menuButton?.setAttribute("aria-expanded", "false");
+    menuButton?.setAttribute("aria-label", "Open navigation");
+  };
+
   menuButton?.addEventListener("click", () => {
-    const open = nav.classList.toggle("open");
+    const open = nav?.classList.toggle("open") || false;
     menuButton.setAttribute("aria-expanded", String(open));
     menuButton.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
   });
 
   nav?.querySelectorAll("a").forEach(link => {
-    link.addEventListener("click", () => {
-      nav.classList.remove("open");
-      menuButton?.setAttribute("aria-expanded", "false");
-    });
+    link.addEventListener("click", closeMenu);
   });
 
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeMenu();
+  });
+
+  document.addEventListener("click", event => {
+    if (nav?.classList.contains("open") &&
+        !nav.contains(event.target) &&
+        !menuButton?.contains(event.target)) closeMenu();
+  });
+
+  // Highlight the current page in the navigation.
+  const currentPage = location.pathname.split("/").pop() || "index.html";
+  nav?.querySelectorAll("a[href]").forEach(link => {
+    const linkPage = link.getAttribute("href").split("#")[0];
+    if (linkPage === currentPage || (currentPage === "" && linkPage === "index.html")) {
+      link.setAttribute("aria-current", "page");
+    }
+  });
+
+  // Keep the footer year current.
   const year = document.getElementById("year");
   if (year) year.textContent = new Date().getFullYear();
 
-  // Add the studio's WhatsApp number in international format: digits only, no + or spaces.
-  const whatsappNumber = "";
-  const whatsappLinks = document.querySelectorAll("[data-whatsapp]");
-  const whatsappIsConfigured = /^\d{8,15}$/.test(whatsappNumber);
-
-  whatsappLinks.forEach(link => {
-    if (whatsappIsConfigured) {
-      link.href = "https://wa.me/" + whatsappNumber + "?text=" +
+  // WhatsApp stays hidden until a real business number is configured.
+  document.querySelectorAll("[data-whatsapp]").forEach(link => {
+    if (whatsappReady) {
+      link.href = "https://wa.me/" + cleanPhone + "?text=" +
         encodeURIComponent("Hello FrameCrest, I'd like to discuss a project.");
-      link.target = "_blank";
-      link.rel = "noopener";
+      link.removeAttribute("aria-disabled");
+      link.removeAttribute("title");
+      if (link.classList.contains("floating-whatsapp")) link.hidden = false;
     } else {
-      link.href = "contact.html#contact-form";
-      link.addEventListener("click", () => {
-        const status = document.getElementById("form-status");
-        if (status) status.textContent =
-          "WhatsApp will be activated as soon as the studio contact number is added.";
-      });
-      if (link.classList.contains("floating-whatsapp")) link.hidden = true;
+      if (link.classList.contains("floating-whatsapp")) {
+        link.hidden = true;
+      } else {
+        link.href = "contact.html#contact-form";
+        link.setAttribute("aria-disabled", "true");
+        link.setAttribute("title", "WhatsApp contact will be added soon");
+        const label = link.querySelector("span");
+        link.textContent = "WhatsApp contact will be available soon";
+        if (label) link.appendChild(label);
+      }
     }
   });
 
-  // Add the studio's Instagram profile URL here before launch.
-  const instagramUrl = "";
-  if (instagramUrl) {
-    document.querySelectorAll("[data-instagram]").forEach(link => link.href = instagramUrl);
-  } else {
-    document.querySelectorAll("[data-instagram]").forEach(link => link.hidden = true);
-  }
+  // Only show social links when a real studio profile is configured.
+  document.querySelectorAll("[data-instagram]").forEach(link => {
+    if (instagramUrl) {
+      link.href = instagramUrl;
+      link.hidden = false;
+    } else {
+      link.hidden = true;
+    }
+  });
 
-  // Create a Formspree form and paste its endpoint here to activate enquiries.
-  const formspreeEndpoint = "";
+  // Configure the form only after its real Formspree endpoint is supplied.
   const form = document.getElementById("contact-form");
   const status = document.getElementById("form-status");
   const submitButton = form?.querySelector('button[type="submit"]');
+  const endpointIsValid = /^https:\/\/formspree\.io\/f\/[A-Za-z0-9]+$/.test(formEndpoint);
+
+  if (form && submitButton && !endpointIsValid) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Enquiry form coming soon";
+    if (status) status.textContent =
+      "This enquiry form is not active yet. It will be available once the studio's receiving email is configured.";
+  }
 
   form?.addEventListener("submit", async event => {
     event.preventDefault();
-
-    if (!formspreeEndpoint) {
-      if (status) status.textContent =
-        "The enquiry form is ready for setup. Its secure submission service will be connected before launch.";
-      return;
-    }
-
+    if (!endpointIsValid) return;
     if (!form.reportValidity()) return;
 
-    if (submitButton) {
-      submitButton.disabled = true;
-      submitButton.setAttribute("aria-busy", "true");
-    }
-    if (status) status.textContent = "Sending your enquiry…";
+    // Honeypot: quietly reject automated form submissions.
+    if (form.querySelector('[name="_gotcha"]')?.value) return;
+
+    submitButton.disabled = true;
+    submitButton.setAttribute("aria-busy", "true");
+    submitButton.textContent = "Sending…";
+    if (status) status.textContent = "Sending your enquiry securely…";
 
     try {
-      const response = await fetch(formspreeEndpoint, {
+      const response = await fetch(formEndpoint, {
         method: "POST",
         body: new FormData(form),
         headers: { Accept: "application/json" }
       });
-
       if (!response.ok) throw new Error("The form service returned an error.");
 
       form.reset();
       if (status) status.textContent =
-        "Thank you. Your enquiry has been sent successfully.";
+        "Thank you. Your enquiry has been sent successfully. We'll be in touch.";
+      submitButton.textContent = "Enquiry sent";
     } catch (error) {
       if (status) status.textContent =
-        "We couldn't send your enquiry. Please try again or contact us directly.";
+        "We couldn't send your enquiry. Please try again in a moment.";
+      submitButton.disabled = false;
+      submitButton.textContent = "Try again";
     } finally {
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.removeAttribute("aria-busy");
-      }
+      submitButton.removeAttribute("aria-busy");
     }
   });
+
+  // Gentle reveal effects; content remains visible if the browser lacks the API.
+  if ("IntersectionObserver" in window &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const revealItems = document.querySelectorAll(
+      ".page-hero, .section-heading, .work-card, .services-list article, " +
+      ".approach-image, .approach-copy, .process-grid article, .contact-intro, .contact-form"
+    );
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    revealItems.forEach(item => {
+      item.classList.add("will-reveal");
+      observer.observe(item);
+    });
+  }
 })();
