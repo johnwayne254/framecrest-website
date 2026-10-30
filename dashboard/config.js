@@ -1,0 +1,7 @@
+// Add your Supabase project URL and anon/public key here.
+// These values are designed to be public in the browser; database security is enforced by Row Level Security.
+// NEVER place a service_role key or database password in this file.
+window.FRAMECREST_CONFIG = {
+  supabaseUrl: "YOUR_SUPABASE_PROJECT_URL",
+  supabaseAnonKey: "YOUR_SUPABASE_ANON_KEY"
+};
