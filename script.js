@@ -91,7 +91,7 @@
       submitButton.disabled = true;
       submitButton.textContent = "Enquiry form coming soon";
       if (status) status.textContent =
-        "This enquiry form is not active yet. It will be available once the studio's receiving email is configured.";
+        "The online enquiry form is being connected. It will accept submissions once the secure form service is configured.";
     } else {
       submitButton.disabled = false;
     }
