@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#14283F"><title>FrameCrest | Studio Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="login-screen" class="login-wrap">
+  <div class="login-card">
+    <div class="brand-lockup"><span class="brand-symbol">F<span>C</span></span><span>FRAMECREST<small>STUDIOS</small></span></div>
+    <p class="eyebrow">PRIVATE WORKSPACE</p><h1>Welcome back.</h1><p class="muted">Sign in to manage projects, clients and delivery.</p>
+    <form id="login-form"><label>Email address<input id="email" type="email" autocomplete="username" required placeholder="you@company.com"></label><label>Password<input id="password" type="password" autocomplete="current-password" required placeholder="Your password"></label><button class="btn primary full" type="submit">Sign in <span>→</span></button></form>
+    <p id="login-message" class="message" aria-live="polite"></p><p class="tiny muted">Access is invitation-only. Contact your FrameCrest administrator for an account.</p>
+  </div>
+</div>
+<div id="app" class="app-shell hidden">
+  <aside class="sidebar">
+    <a class="brand-lockup side-brand" href="#"><span class="brand-symbol">F<span>C</span></span><span>FRAMECREST<small>STUDIOS</small></span></a>
+    <div class="workspace-label">WORKSPACE</div>
+    <nav id="main-nav">
+      <button class="nav-item active" data-view="overview"><span>▦</span> Overview</button>
+      <button class="nav-item" data-view="projects"><span>▤</span> Projects</button>
+      <button class="nav-item admin-only" data-view="clients"><span>♙</span> Clients</button>
+    </nav>
+    <div class="sidebar-bottom"><div class="profile-chip"><div class="avatar" id="avatar">F</div><div><strong id="user-name">Studio User</strong><small id="user-role">Team member</small></div></div><button id="sign-out" class="signout">Sign out ↗</button></div>
+  </aside>
+  <main class="main-area">
+    <header class="topbar"><div><p class="eyebrow">FRAMECREST WORKSPACE</p><h1 id="page-title">Overview</h1></div><div class="top-actions"><span class="secure-pill">● Private workspace</span><button class="btn primary admin-only" id="new-project-open">＋ New project</button></div></header>
+    <section id="overview-view" class="view">
+      <div class="welcome-row"><div><h2 id="welcome-title">Good to have you here.</h2><p class="muted" id="welcome-subtitle">Here is what's happening across your workspace.</p></div><div class="date-chip" id="today-label"></div></div>
+      <div class="stats-grid" id="stats-grid">
+        <article class="stat-card"><span>Active projects</span><strong id="stat-active">—</strong><small>Currently in production</small></article>
+        <article class="stat-card"><span>In quality review</span><strong id="stat-qa">—</strong><small>Awaiting final checks</small></article>
+        <article class="stat-card"><span>Delivered</span><strong id="stat-delivered">—</strong><small>Completed projects</small></article>
+        <article class="stat-card admin-only"><span>Outstanding balance</span><strong id="stat-balance">—</strong><small>Across all projects · USD</small></article>
+      </div>
+      <div class="content-card"><div class="card-heading"><div><p class="eyebrow">LATEST ACTIVITY</p><h3>Recent projects</h3></div><button class="text-button" data-goto="projects">View all →</button></div><div class="table-wrap"><table><thead><tr><th>PROJECT</th><th>SERVICE</th><th>DUE DATE</th><th>STATUS</th></tr></thead><tbody id="recent-projects"></tbody></table></div></div>
+    </section>
+    <section id="projects-view" class="view hidden">
+      <div class="toolbar"><div><h2>Project register</h2><p class="muted">Track briefs, production, quality checks and delivery.</p></div><input id="project-search" class="search" placeholder="Search projects…" type="search"></div>
+      <div class="content-card"><div class="table-wrap"><table><thead><tr><th>PROJECT</th><th>CLIENT</th><th>SERVICE</th><th>ASSIGNED TO</th><th>DUE DATE</th><th>STATUS</th><th>QA</th></tr></thead><tbody id="projects-table"></tbody></table></div></div>
+    </section>
+    <section id="clients-view" class="view hidden">
+      <div class="toolbar"><div><h2>Clients</h2><p class="muted">Your client directory and account records.</p></div><button class="btn primary" id="new-client-open">＋ Add client</button></div>
+      <div class="content-card"><div class="table-wrap"><table><thead><tr><th>CLIENT</th><th>CONTACT</th><th>EMAIL</th><th>LOCATION</th><th>PROJECTS</th></tr></thead><tbody id="clients-table"></tbody></table></div></div>
+    </section>
+  </main>
+</div>
+<div id="project-modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">PROJECT INTAKE</p><h2>Create a project</h2></div><button class="icon-button" data-close="project-modal">×</button></div>
+<form id="project-form" class="form-grid">
+<label>Project name<input name="name" required placeholder="e.g. Willow Creek listing"></label>
+<label>Client<select name="client_id" id="project-client" required></select></label>
+<label>Service<select name="service" required><option>Photo Editing</option><option>Virtual Staging</option><option>Floor Plan Design</option><option>Real Estate Video Editing</option></select></label>
+<label>Quantity<input name="quantity" type="number" min="1" value="1" required></label>
+<label>Due date<input name="due_date" type="date" required></label>
+<label>Assign editor<select name="editor_id" id="project-editor"><option value="">Unassigned</option></select></label>
+<label class="span-2">Brief / project notes<textarea name="brief" rows="3" placeholder="Scope, style notes, file requirements…"></textarea></label>
+<label class="span-2">Project folder / delivery link<input name="folder_url" type="url" placeholder="https://…"></label>
+<div class="form-actions span-2"><button type="button" class="btn secondary" data-close="project-modal">Cancel</button><button class="btn primary" type="submit">Create project</button></div>
+</form><p class="message" id="project-message"></p></div></div>
+<div id="client-modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">CLIENT DIRECTORY</p><h2>Add a client</h2></div><button class="icon-button" data-close="client-modal">×</button></div>
+<form id="client-form" class="form-grid">
+<label>Company / client name<input name="name" required></label><label>Contact person<input name="contact_name"></label><label>Email<input name="email" type="email"></label><label>Phone<input name="phone"></label><label>City / state<input name="location"></label><label>Website<input name="website" type="url"></label>
+<div class="form-actions span-2"><button type="button" class="btn secondary" data-close="client-modal">Cancel</button><button class="btn primary" type="submit">Save client</button></div></form><p class="message" id="client-message"></p></div></div>
+<div id="toast" class="toast" role="status"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script>
+</body></html>
