@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#151715">
-  <meta name="description" content="Contact FrameCrest about property photography, image editing and creative visual projects.">
-  <meta property="og:title" content="contact — FrameCrest">
-  <meta property="og:description" content="Contact FrameCrest about property photography, image editing and creative visual projects.">
+  <meta name="theme-color" content="#142a42">
+  <meta name="description" content="Request a quote from FrameCrest Studios for real estate photo editing, virtual staging, floor plan design and property video editing.">
+  <meta property="og:title" content="Start a Project — FrameCrest Studios">
+  <meta property="og:description" content="Tell FrameCrest about your property visual project, expected image volume and preferred turnaround.">
   <meta property="og:type" content="website">
-  <title>Contact — FrameCrest</title>
+  <title>Contact FrameCrest Studios — Request a Project Quote</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 </head>
-<body>
+<body class="contact-page">
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <a class="wordmark" href="index.html" aria-label="FrameCrest home">
@@ -28,41 +28,131 @@
       <a href="index.html">Home</a>
       <a href="portfolio.html">Selected work</a>
       <a href="services.html">Services</a>
-      <a href="about.html">Our approach</a>
-      <a class="nav-contact" href="contact.html">Start a project <span>↗</span></a>
+      <a class="nav-about" href="about.html">About</a>
+      <a class="nav-contact" href="contact.html" aria-current="page">Start a project <span>↗</span></a>
     </nav>
-  </header><main id="main">
-  <section class="page-hero">
-    <p class="eyebrow">LET'S TALK</p>
-    <h1>Have a project<br><em>in mind?</em></h1>
-    <p>Tell us a little about what you're working on. We'll use your brief to understand the project and discuss the next steps.</p>
-  </section>
-  <section class="contact-section page-contact" id="contact">
-    <div class="contact-intro">
-      <p class="eyebrow">START A CONVERSATION</p>
-      <h2>Let's make<br>something <em>stand out.</em></h2>
-      <p>Share the service you need, a rough image count and your expected timeline. The enquiry form is being prepared. Once connected, you can share your project details here.</p>
-      <a class="contact-whatsapp" data-whatsapp href="contact.html#contact-form">Prefer WhatsApp? Start a conversation <span>↗</span></a>
-    </div>
-    <form class="contact-form" id="contact-form">
-      <input type="hidden" name="_subject" value="New FrameCrest website enquiry">
-      <div class="form-trap" aria-hidden="true"><label>Leave this field empty<input type="text" name="_gotcha" tabindex="-1" autocomplete="off"></label></div>
-      <div class="form-row">
-        <label>Your name<input name="name" autocomplete="name" required placeholder="Your name"></label>
-        <label>Email address<input name="email" type="email" autocomplete="email" required placeholder="you@example.com"></label>
+  </header>
+
+  <main id="main">
+    <section class="page-hero contact-hero">
+      <p class="eyebrow">LET'S BUILD A BETTER PROPERTY PRESENTATION</p>
+      <h1>Tell us what<br><em>you're working on.</em></h1>
+      <p>Whether you need a single property edited or a reliable production partner for ongoing work, FrameCrest can help you plan the right visual support. Share a few details and let's start with a clear brief.</p>
+      <div class="contact-hero-tags"><span>PHOTO EDITING</span><span>VIRTUAL STAGING</span><span>FLOOR PLANS</span><span>VIDEO EDITING</span></div>
+    </section>
+
+    <section class="contact-main section-pad">
+      <aside class="contact-sidebar">
+        <p class="eyebrow">START A PROJECT</p>
+        <h2>Good work<br>starts with a<br><em>good brief.</em></h2>
+        <p>Tell us about the property, the service you need and the result you're aiming for. We will use your information to understand the scope and discuss the next step.</p>
+
+        <div class="contact-promise-list">
+          <article><span>01</span><div><h3>Tell us what you need</h3><p>Choose a service, estimate the image volume and share your requirements.</p></div></article>
+          <article><span>02</span><div><h3>We review the brief</h3><p>We look at the scope, references, output requirements and requested timeline.</p></div></article>
+          <article><span>03</span><div><h3>Agree the next step</h3><p>We discuss scope, pricing, turnaround and any files needed before production.</p></div></article>
+        </div>
+
+        <div class="contact-support-note">
+          <span>NOT SURE WHAT TO REQUEST?</span>
+          <p>Describe the result you want. We can help identify which of our four services best fits the project.</p>
+          <a href="services.html">Compare our services ↗</a>
+        </div>
+      </aside>
+
+      <div class="contact-form-panel">
+        <div class="contact-form-heading">
+          <p class="eyebrow">PROJECT ENQUIRY</p>
+          <h2>Let's get the<br><em>details right.</em></h2>
+          <p>Fields marked with * are required. A little more detail helps us understand the work before discussing a quote.</p>
+        </div>
+        <form class="contact-form contact-project-form" id="contact-form">
+          <input type="hidden" name="_subject" value="New FrameCrest Studios project enquiry">
+          <div class="form-trap" aria-hidden="true"><label>Leave this field empty<input type="text" name="_gotcha" tabindex="-1" autocomplete="off"></label></div>
+
+          <div class="form-row">
+            <label>Your name *<input name="name" autocomplete="name" required placeholder="Your full name"></label>
+            <label>Work email *<input name="email" type="email" autocomplete="email" required placeholder="you@company.com"></label>
+          </div>
+
+          <label>Studio, agency or company <span class="optional-label">OPTIONAL</span><input name="company" autocomplete="organization" placeholder="Your business name"></label>
+
+          <label>Which service do you need? *
+            <select name="service" required>
+              <option value="">Choose a service</option>
+              <option>Real Estate Photo Editing</option>
+              <option>Virtual Staging</option>
+              <option>Floor Plan Design</option>
+              <option>Real Estate Video Editing</option>
+              <option>Multiple services / ongoing support</option>
+              <option>Not sure yet — help me choose</option>
+            </select>
+          </label>
+
+          <div class="form-row">
+            <label>Approximate image or property volume
+              <select name="volume">
+                <option value="">Select a range</option>
+                <option>1–10 images</option>
+                <option>11–25 images</option>
+                <option>26–50 images</option>
+                <option>51–100 images</option>
+                <option>More than 100 images</option>
+                <option>Not sure / depends on project</option>
+              </select>
+            </label>
+            <label>How often do you need support?
+              <select name="frequency">
+                <option value="">Select one</option>
+                <option>One-time project</option>
+                <option>Weekly batches</option>
+                <option>Monthly projects</option>
+                <option>Ongoing / as needed</option>
+                <option>Still deciding</option>
+              </select>
+            </label>
+          </div>
+
+          <label>Preferred turnaround
+            <select name="turnaround">
+              <option value="">Select your preference</option>
+              <option>Flexible — agree together</option>
+              <option>Standard — based on project scope</option>
+              <option>Time-sensitive — please discuss</option>
+            </select>
+          </label>
+
+          <label>Tell us about the project *
+            <textarea name="message" rows="6" required placeholder="What type of property is it? What would you like us to do? Include any style references, output sizes or other requirements that may help us understand the brief."></textarea>
+          </label>
+
+          <label class="contact-consent"><input type="checkbox" name="consent" value="I agree that FrameCrest may use these details to review and respond to my enquiry." required><span>I agree that FrameCrest may use the details I provide to review and respond to this enquiry.</span></label>
+          <button class="button button-dark contact-submit" type="submit" disabled>Send project enquiry <span>↗</span></button>
+          <p class="form-status" id="form-status" role="status" aria-live="polite">The online enquiry form is being connected. It will accept submissions once the secure form service is configured.</p>
+          <p class="contact-form-footnote">Please do not include passwords, access codes or sensitive personal information in your project brief.</p>
+        </form>
       </div>
-      <label>What do you need help with?
-        <select name="service" required><option value="">Choose a service</option><option>Real estate photo editing</option><option>HDR blending</option><option>Image enhancement</option><option>Creative visual support</option><option>Something else</option></select>
-      </label>
-      <label>Tell us about your project<textarea name="message" rows="5" required placeholder="A few details about your project, image count and timeline..."></textarea></label>
-      <button class="button button-light" type="submit" disabled>Send enquiry <span>↗</span></button>
-      <p class="form-status" id="form-status" role="status" aria-live="polite">The enquiry form is awaiting its secure submission service setup.</p>
-    </form>
-  </section>
-</main>
+    </section>
+
+    <section class="contact-options section-pad">
+      <div><p class="eyebrow">WAYS TO WORK TOGETHER</p><h2>One project or<br><em>ongoing support.</em></h2><p>We can discuss a single property, recurring editing batches or white-label production support for your studio or agency. Quotes are based on the agreed scope, volume, complexity and turnaround.</p></div>
+      <div class="contact-option-cards">
+        <article><span>01</span><h3>Single projects</h3><p>For a specific property, listing or visual requirement.</p></article>
+        <article><span>02</span><h3>Recurring batches</h3><p>For regular property photography and ongoing content needs.</p></article>
+        <article><span>03</span><h3>White-label support</h3><p>For studios and agencies that need a flexible production partner.</p></article>
+      </div>
+    </section>
+
+    <section class="contact-bottom-cta">
+      <p class="eyebrow">NEED MORE INFORMATION FIRST?</p>
+      <h2>Explore the work.<br><em>See how we can help.</em></h2>
+      <div><a class="button button-light" href="services.html">View services <span>↗</span></a><a class="contact-bottom-link" href="portfolio.html">Browse selected visuals ↗</a></div>
+    </section>
+  </main>
+
   <footer class="site-footer">
     <a class="wordmark footer-wordmark" href="index.html"><span class="brand-mark">F<span>C</span></span><span class="brand-name">FRAMECREST<small>VISUAL STUDIO</small></span></a>
-    <p>Property imagery, thoughtfully finished.</p>
+    <p>Real estate visuals, thoughtfully finished.</p>
     <div class="footer-links"><a href="portfolio.html">Work</a><a href="services.html">Services</a><a href="about.html">About</a><a href="contact.html">Contact</a><a data-instagram href="https://www.instagram.com/" target="_blank" rel="noopener">Instagram ↗</a></div>
     <small>© <span id="year"></span> FrameCrest. All rights reserved.</small>
   </footer>
