@@ -132,6 +132,45 @@
     }
   });
 
+  // Selected-work image preview: open each gallery image in an accessible lightbox.
+  const workLightbox = document.getElementById("work-lightbox");
+  const workLightboxImage = document.getElementById("work-lightbox-image");
+  const workLightboxCaption = document.getElementById("work-lightbox-caption");
+  const workLightboxClose = workLightbox?.querySelector(".work-lightbox-close");
+
+  if (workLightbox && workLightboxImage && workLightboxCaption &&
+      typeof workLightbox.showModal === "function") {
+    document.querySelectorAll(".home-page .work-image-open").forEach(link => {
+      link.addEventListener("click", event => {
+        const thumbnail = link.querySelector("img");
+        if (!thumbnail) return;
+
+        event.preventDefault();
+        workLightboxImage.src = link.href;
+        workLightboxImage.alt = thumbnail.alt || "Selected FrameCrest property image";
+        workLightboxCaption.textContent =
+          link.dataset.lightboxTitle || thumbnail.alt || "Selected work";
+
+        workLightbox.showModal();
+        workLightboxClose?.focus();
+      });
+    });
+
+    workLightboxClose?.addEventListener("click", () => {
+      workLightbox.close();
+    });
+
+    workLightbox.addEventListener("click", event => {
+      if (event.target === workLightbox) workLightbox.close();
+    });
+
+    workLightbox.addEventListener("close", () => {
+      workLightboxImage.removeAttribute("src");
+      workLightboxImage.alt = "";
+      workLightboxCaption.textContent = "";
+    });
+  }
+
   // Gentle reveal effects; content remains visible if the browser lacks the API.
   if ("IntersectionObserver" in window &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
