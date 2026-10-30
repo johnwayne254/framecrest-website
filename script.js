@@ -94,6 +94,8 @@
         "The online enquiry form is being connected. It will accept submissions once the secure form service is configured.";
     } else {
       submitButton.disabled = false;
+      if (status) status.textContent =
+        "Complete the form with your project details, then send your enquiry to FrameCrest.";
     }
   }
 
