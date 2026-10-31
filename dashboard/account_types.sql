@@ -72,3 +72,15 @@ for each row execute function public.protect_account_type();
 --   and p.client_id is null;
 --
 -- Linked client accounts cannot be converted to staff accounts.
+
+
+-- Ensure auth-triggered profiles have a client account type by default.
+-- Staff invitations are safely promoted by the server-side invitation function.
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.profiles(id,full_name,role,account_type)
+  values(new.id, coalesce(new.raw_user_meta_data->>'full_name',''), 'client', 'client')
+  on conflict (id) do nothing;
+  return new;
+end; $$;
