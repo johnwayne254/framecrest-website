@@ -127,8 +127,18 @@
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
   $("#project-search").addEventListener("input",renderProjects);
   $("#new-project-open").addEventListener("click",()=>$("#project-modal").classList.remove("hidden"));
-  $("#new-client-open").addEventListener("click",()=>$("#client-modal").classList.remove("hidden"));
-  $$("[data-close]").forEach(b=>b.addEventListener("click",()=>$("#"+b.dataset.close).classList.add("hidden")));
+  function resetClientForm(){
+    const form=$("#client-form");
+    form.reset();delete form.dataset.editId;
+    $("#client-modal h2").textContent="Add a client";
+    form.querySelector('button[type="submit"]').textContent="Save client";
+    $("#client-message").textContent="";
+  }
+  $("#new-client-open").addEventListener("click",()=>{resetClientForm();$("#client-modal").classList.remove("hidden");});
+  $("[data-close]").forEach(b=>b.addEventListener("click",()=>{
+    if(b.dataset.close==="client-modal") resetClientForm();
+    $("#"+b.dataset.close).classList.add("hidden");
+  }));
   $("#client-form").addEventListener("submit",async e=>{
     e.preventDefault();const form=e.currentTarget,submit=form.querySelector('button[type="submit"]');if(submit.disabled)return;
     const raw=Object.fromEntries(new FormData(form).entries()),obj={name:String(raw.name||"").trim()};
@@ -141,7 +151,7 @@
       clients=clients.filter(c=>c.id!==result.data.id).concat(result.data).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
       renderClients();fillSelects();form.reset();delete form.dataset.editId;$("#client-modal h2").textContent="Add a client";$("#client-modal").classList.add("hidden");toast(editId?"Client updated.":"Client saved.");
     }catch(err){$("#client-message").textContent="Could not save client: "+(err.message||"Please try again.");}
-    finally{submit.disabled=false;submit.textContent="Save client";}
+    finally{submit.disabled=false;submit.textContent=form.dataset.editId?"Save changes":"Save client";}
   });
   $("#project-form").addEventListener("submit",async e=>{
     e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget).entries());
