@@ -59,7 +59,7 @@
       if(results[1].error) console.error("FrameCrest editors load:",results[1].error);
       if(results[2].error) toast("Could not load project finances: "+results[2].error.message);
       await refreshClients();
-      const [teamResult,qaResult]=await Promise.all([db.from("profiles").select("id,full_name,role,client_id").neq("role","admin").order("full_name"),db.from("profiles").select("id,full_name").eq("role","qa").order("full_name")]);
+      const [teamResult,qaResult]=await Promise.all([db.from("profiles").select("id,full_name,role,client_id,account_type").eq("account_type","staff").order("full_name"),db.from("profiles").select("id,full_name").eq("role","qa").order("full_name")]);
       team=teamResult.data||[];qaReviewers=qaResult.data||[];renderTeam();fillSelects();
       const balance=finances.reduce((a,x)=>a+Number(x.quote_usd||0)-Number(x.paid_usd||0),0);
       $("#stat-balance").textContent=money(balance);
@@ -82,8 +82,8 @@
   }
   function renderTeam(){
     const counts={};projects.forEach(p=>{if(p.editor_id)counts[p.editor_id]=(counts[p.editor_id]||0)+1;if(p.qa_id)counts[p.qa_id]=(counts[p.qa_id]||0)+1;});
-    $("#team-table").innerHTML=team.map(m=>`<tr><td><strong>${safe(m.full_name||"Unnamed team member")}</strong></td><td><select class="inline-select team-role" data-id="${m.id}">${["client","editor","qa"].map(r=>`<option value="${r}" ${m.role===r?"selected":""}>${r==="qa"?"QA":r[0].toUpperCase()+r.slice(1)}</option>`).join("")}</select></td><td>${counts[m.id]||0}</td><td><button class="btn secondary team-save" data-id="${m.id}" type="button">Save role</button></td></tr>`).join("")||'<tr><td colspan="4" class="empty">No team accounts found.</td></tr>';
-    $$(".team-save").forEach(btn=>btn.addEventListener("click",async()=>{const select=$(`.team-role[data-id="${btn.dataset.id}"]`);btn.disabled=true;const {error}=await db.from("profiles").update({role:select.value,client_id:select.value==="client"?team.find(x=>x.id===btn.dataset.id)?.client_id||null:null}).eq("id",btn.dataset.id);btn.disabled=false;if(error){toast("Could not update role: "+error.message);return;}toast("Team role updated.");await refresh();}));
+    $("#team-table").innerHTML=team.map(m=>`<tr><td><strong>${safe(m.full_name||"Unnamed team member")}</strong></td><td><select class="inline-select team-role" data-id="${m.id}">${["editor","qa"].map(r=>`<option value="${r}" ${m.role===r?"selected":""}>${r==="qa"?"QA":r[0].toUpperCase()+r.slice(1)}</option>`).join("")}</select></td><td>${counts[m.id]||0}</td><td><button class="btn secondary team-save" data-id="${m.id}" type="button">Save role</button></td></tr>`).join("")||'<tr><td colspan="4" class="empty">No team accounts found.</td></tr>';
+    $$(".team-save").forEach(btn=>btn.addEventListener("click",async()=>{const select=$(`.team-role[data-id="${btn.dataset.id}"]`);btn.disabled=true;const {error}=await db.from("profiles").update({role:select.value}).eq("id",btn.dataset.id);btn.disabled=false;if(error){toast("Could not update role: "+error.message);return;}toast("Team role updated.");await refresh();}));
   }
   function renderProjects(){
     const term=($("#project-search")?.value||"").toLowerCase();
