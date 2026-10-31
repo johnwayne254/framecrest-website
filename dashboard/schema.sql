@@ -137,3 +137,47 @@ grant select, insert, update on public.project_financials to authenticated;
 -- To invite an editor, create their auth user, then run:
 -- update public.profiles p set role='editor'
 -- from auth.users u where p.id=u.id and u.email='EDITOR_LOGIN_EMAIL';
+
+-- Create a financial row automatically for every new project.
+create or replace function public.create_project_financials()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.project_financials(project_id, quote_usd, paid_usd)
+  values(new.id, 0, 0)
+  on conflict (project_id) do nothing;
+  return new;
+end; $$;
+drop trigger if exists projects_financials_trigger on public.projects;
+create trigger projects_financials_trigger after insert on public.projects
+for each row execute function public.create_project_financials();
+
+-- Editors may update production progress only. They cannot change ownership,
+-- client, pricing-related project details, scope, assignment or delivery links.
+create or replace function public.guard_editor_project_updates()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  if public.current_role() = 'editor' then
+    if new.project_code is distinct from old.project_code
+      or new.name is distinct from old.name
+      or new.client_id is distinct from old.client_id
+      or new.service is distinct from old.service
+      or new.quantity is distinct from old.quantity
+      or new.editor_id is distinct from old.editor_id
+      or new.due_date is distinct from old.due_date
+      or new.brief is distinct from old.brief
+      or new.folder_url is distinct from old.folder_url
+      or new.created_at is distinct from old.created_at then
+      raise exception 'Editors may only update project status and QA status.';
+    end if;
+    if new.status not in ('In progress','In QA','Revisions') then
+      raise exception 'Editors may set status to In progress, In QA or Revisions only.';
+    end if;
+    if new.qa_status not in ('Pending review','Changes required','Not started') then
+      raise exception 'Only administrators can mark QA as Passed.';
+    end if;
+  end if;
+  return new;
+end; $$;
+drop trigger if exists projects_editor_guard_trigger on public.projects;
+create trigger projects_editor_guard_trigger before update on public.projects
+for each row execute function public.guard_editor_project_updates();
