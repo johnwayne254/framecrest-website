@@ -3,7 +3,7 @@
   const configured = cfg.supabaseUrl && cfg.supabaseAnonKey && !cfg.supabaseUrl.includes("YOUR_") && !cfg.supabaseAnonKey.includes("YOUR_");
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
-  let db, user, profile, projects = [], clients = [], editors = [];
+  let db, user, profile, projects = [], clients = [], editors = [], finances = [];
   const money = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(Number(n||0));
   const safe = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const date = v => v ? new Date(v+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
@@ -48,10 +48,10 @@
         db.from("profiles").select("id,full_name").eq("role","editor").order("full_name"),
         db.from("project_financials").select("project_id,quote_usd,paid_usd")
       ]);
-      clients=cr.data||[]; editors=er.data||[];
-      const finances=fr.data||[]; const balance=finances.reduce((a,x)=>a+Number(x.quote_usd||0)-Number(x.paid_usd||0),0);
+      clients=cr.data||[]; editors=er.data||[]; finances=fr.data||[];
+      const balance=finances.reduce((a,x)=>a+Number(x.quote_usd||0)-Number(x.paid_usd||0),0);
       $("#stat-balance").textContent=money(balance);
-      renderClients(); fillSelects();
+      renderClients(); fillSelects(); renderFinance();
     }
     renderProjects(); renderOverview();
   }
@@ -65,8 +65,16 @@
   function renderProjects(){
     const term=($("#project-search")?.value||"").toLowerCase();
     const rows=projects.filter(p=>(p.name+" "+p.project_code+" "+p.service+" "+(p.clients?.name||"")).toLowerCase().includes(term));
-    $("#projects-table").innerHTML=rows.map(p=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.clients?.name||"Your project")+'</td><td>'+safe(p.service)+'</td><td>'+safe(p.profiles?.full_name||"Unassigned")+'</td><td>'+date(p.due_date)+'</td><td>'+ (isAdmin()||role()==="editor" ? '<select class="inline-select status-change" data-id="'+p.id+'">'+["Awaiting files","In progress","In QA","Revisions","Delivered","Cancelled"].map(s=>'<option '+(s===p.status?'selected':'')+'>'+s+'</option>').join("")+'</select>' : '<span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span>')+'</td><td><span class="status '+statusClass(p.qa_status)+'">'+safe(p.qa_status||"Not started")+'</span></td></tr>').join("")||'<tr><td colspan="7" class="empty">No matching projects.</td></tr>';
+    const allowedStatuses=isAdmin()?["Awaiting files","In progress","In QA","Revisions","Delivered","Cancelled"]:["In progress","In QA","Revisions"];
+    $("#projects-table").innerHTML=rows.map(p=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.clients?.name||"Your project")+'</td><td>'+safe(p.service)+'</td><td>'+safe(p.profiles?.full_name||"Unassigned")+'</td><td>'+date(p.due_date)+'</td><td>'+ (isAdmin()||role()==="editor" ? '<select class="inline-select status-change" data-id="'+p.id+'">'+allowedStatuses.map(s=>'<option '+(s===p.status?'selected':'')+'>'+s+'</option>').join("")+'</select>' : '<span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span>')+'</td><td>'+ (isAdmin()?'<select class="inline-select qa-change" data-id="'+p.id+'">'+["Not started","Pending review","Passed","Changes required"].map(s=>'<option '+(s===p.qa_status?'selected':'')+'>'+s+'</option>').join("")+'</select>':'<span class="status '+statusClass(p.qa_status)+'">'+safe(p.qa_status||"Not started")+'</span>')+'</td></tr>').join("")||'<tr><td colspan="7" class="empty">No matching projects.</td></tr>';
     $$(".status-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("Project status updated.");await refresh();}}));
+    $$(".qa-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({qa_status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("QA status updated.");await refresh();}}));
+  }
+  function renderFinance(){
+    if(!isAdmin()) return;
+    const rows=projects.map(p=>{const f=finances.find(x=>x.project_id===p.id)||{quote_usd:0,paid_usd:0};return {p,f,balance:Number(f.quote_usd||0)-Number(f.paid_usd||0)};});
+    $("#finance-table").innerHTML=rows.map(({p,f,balance})=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.clients?.name||"—")+'</td><td>'+money(f.quote_usd)+'</td><td>'+money(f.paid_usd)+'</td><td><strong>'+money(balance)+'</strong></td><td><button class="btn secondary finance-edit" data-id="'+p.id+'">Edit</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No projects to show.</td></tr>';
+    $$(".finance-edit").forEach(btn=>btn.addEventListener("click",()=>{const f=finances.find(x=>x.project_id===btn.dataset.id)||{quote_usd:0,paid_usd:0};const form=$("#finance-form");form.project_id.value=btn.dataset.id;form.quote_usd.value=f.quote_usd||0;form.paid_usd.value=f.paid_usd||0;$("#finance-modal").classList.remove("hidden");}));
   }
   function renderClients(){
     $("#clients-table").innerHTML=clients.map(c=>'<tr><td><strong>'+safe(c.name)+'</strong></td><td>'+safe(c.contact_name||"—")+'</td><td>'+safe(c.email||"—")+'</td><td>'+safe(c.location||"—")+'</td><td>'+projects.filter(p=>p.client_id===c.id).length+'</td></tr>').join("")||'<tr><td colspan="5" class="empty">No clients added yet.</td></tr>';
@@ -97,6 +105,15 @@
     const {data,error}=await db.from("projects").insert(obj).select("id").single();
     if(error){$("#project-message").textContent=error.message;return;}
     e.currentTarget.reset();$("#project-modal").classList.add("hidden");toast("Project created.");await refresh();
+  });
+
+  $("#finance-form").addEventListener("submit",async e=>{
+    e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget).entries());
+    const quote=Number(f.quote_usd), paid=Number(f.paid_usd);
+    if(paid>quote){$("#finance-message").textContent="Amount paid cannot exceed the quoted amount.";return;}
+    const {error}=await db.from("project_financials").upsert({project_id:f.project_id,quote_usd:quote,paid_usd:paid,updated_at:new Date().toISOString()},{onConflict:"project_id"});
+    if(error){$("#finance-message").textContent=error.message;return;}
+    $("#finance-modal").classList.add("hidden");toast("Project finances saved.");await refresh();
   });
   boot();
 })();
