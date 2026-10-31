@@ -25,6 +25,7 @@
       <button class="nav-item" data-view="projects"><span>▤</span> Projects</button>
       <button class="nav-item admin-only" data-view="clients"><span>♙</span> Clients</button>
       <button class="nav-item admin-only" data-view="finance"><span>$</span> Finance</button>
+      <button class="nav-item admin-only" data-view="team"><span>♙</span> Team</button>
     </nav>
     <div class="sidebar-bottom"><div class="profile-chip"><div class="avatar" id="avatar">F</div><div><strong id="user-name">Studio User</strong><small id="user-role">Team member</small></div></div><button id="sign-out" class="signout">Sign out ↗</button></div>
   </aside>
@@ -52,6 +53,11 @@
       <div class="toolbar"><div><h2>Project finances</h2><p class="muted">Track quotes, payments and outstanding balances.</p></div></div>
       <div class="content-card"><div class="table-wrap"><table><thead><tr><th>PROJECT</th><th>CLIENT</th><th>QUOTE (USD)</th><th>PAID (USD)</th><th>OUTSTANDING</th><th>ACTION</th></tr></thead><tbody id="finance-table"></tbody></table></div></div>
     </section>
+    <section id="team-view" class="view hidden">
+      <div class="toolbar"><div><h2>Team directory</h2><p class="muted">Manage workspace access and assign Editor or QA responsibilities.</p></div></div>
+      <div class="content-card"><div class="table-wrap"><table><thead><tr><th>TEAM MEMBER</th><th>WORKSPACE ROLE</th><th>ASSIGNED WORK</th><th>ACTION</th></tr></thead><tbody id="team-table"></tbody></table></div></div>
+    </section>
+
   </main>
 </div>
 <div id="project-modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">PROJECT INTAKE</p><h2>Create a project</h2></div><button class="icon-button" data-close="project-modal">×</button></div>
@@ -62,6 +68,7 @@
 <label>Quantity<input name="quantity" type="number" min="1" value="1" required></label>
 <label>Due date<input name="due_date" type="date" required></label>
 <label>Assign editor<select name="editor_id" id="project-editor"><option value="">Unassigned</option></select></label>
+<label>Assign QA reviewer<select name="qa_id" id="project-qa"><option value="">Unassigned</option></select></label>
 <label class="span-2">Brief / project notes<textarea name="brief" rows="3" placeholder="Scope, style notes, file requirements…"></textarea></label>
 <label class="span-2">Project folder / delivery link<input name="folder_url" type="url" placeholder="https://…"></label>
 <div class="form-actions span-2"><button type="button" class="btn secondary" data-close="project-modal">Cancel</button><button class="btn primary" type="submit">Create project</button></div>
