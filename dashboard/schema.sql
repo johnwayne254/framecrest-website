@@ -181,3 +181,10 @@ end; $$;
 drop trigger if exists projects_editor_guard_trigger on public.projects;
 create trigger projects_editor_guard_trigger before update on public.projects
 for each row execute function public.guard_editor_project_updates();
+-- Backfill financial rows for projects created before this trigger was added.
+insert into public.project_financials(project_id, quote_usd, paid_usd)
+select p.id, 0, 0
+from public.projects p
+left join public.project_financials f on f.project_id = p.id
+where f.project_id is null
+on conflict (project_id) do nothing;
