@@ -86,7 +86,26 @@
     $$(".finance-edit").forEach(btn=>btn.addEventListener("click",()=>{const f=finances.find(x=>x.project_id===btn.dataset.id)||{quote_usd:0,paid_usd:0};const form=$("#finance-form");form.project_id.value=btn.dataset.id;form.quote_usd.value=f.quote_usd||0;form.paid_usd.value=f.paid_usd||0;$("#finance-modal").classList.remove("hidden");}));
   }
   function renderClients(){
-    $("#clients-table").innerHTML=clients.map(c=>'<tr><td><strong>'+safe(c.name)+'</strong></td><td>'+safe(c.contact_name||"—")+'</td><td>'+safe(c.email||"—")+'</td><td>'+safe(c.location||"—")+'</td><td>'+projects.filter(p=>p.client_id===c.id).length+'</td></tr>').join("")||'<tr><td colspan="5" class="empty">No clients added yet.</td></tr>';
+    $("#clients-table").innerHTML=clients.map(c=>'<tr><td><strong>'+safe(c.name)+'</strong></td><td>'+safe(c.contact_name||"—")+'</td><td>'+safe(c.email||"—")+'</td><td>'+safe(c.location||"—")+'</td><td>'+projects.filter(p=>p.client_id===c.id).length+'</td><td><button class="btn secondary client-delete" data-id="'+c.id+'" type="button">Delete</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No clients added yet.</td></tr>';
+    $(".client-delete").forEach(btn=>btn.addEventListener("click",async()=>{
+      const client=clients.find(c=>c.id===btn.dataset.id);
+      if(!client) return;
+      if(!window.confirm('Delete "'+client.name+'"? This cannot be undone.')) return;
+      btn.disabled=true;
+      try{
+        const {count,error:countError}=await db.from("projects").select("id",{count:"exact",head:true}).eq("client_id",client.id);
+        if(countError) throw countError;
+        if((count||0)>0){toast("This client has existing projects. Reassign or remove those projects before deleting the client.");btn.disabled=false;return;}
+        const {error}=await db.from("clients").delete().eq("id",client.id);
+        if(error) throw error;
+        clients=clients.filter(c=>c.id!==client.id);
+        renderClients();fillSelects();toast("Client deleted.");
+      }catch(error){
+        toast("Could not delete client: "+(error.message||"Please try again."));
+        console.error("FrameCrest client delete:",error);
+        btn.disabled=false;
+      }
+    }));
   }
   function fillSelects(){
     $("#project-client").innerHTML='<option value="">Select a client</option>'+clients.map(c=>'<option value="'+c.id+'">'+safe(c.name)+'</option>').join("");
