@@ -3,7 +3,7 @@
   const configured = cfg.supabaseUrl && cfg.supabaseAnonKey && !cfg.supabaseUrl.includes("YOUR_") && !cfg.supabaseAnonKey.includes("YOUR_");
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
-  let db, user, profile, projects = [], clients = [], editors = [], finances = [];
+  let db, user, profile, projects = [], clients = [], editors = [], qaReviewers = [], finances = [], team = [];
   const money = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(Number(n||0));
   const safe = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const date = v => v ? new Date(v+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
@@ -48,7 +48,7 @@
     return true;
   }
   async function refresh(){
-    const jobs=[db.from("projects").select("id,project_code,name,client_id,service,quantity,editor_id,due_date,status,qa_status,created_at,brief,folder_url,clients(name),profiles!projects_editor_id_fkey(full_name)").order("created_at",{ascending:false})];
+    const jobs=[db.from("projects").select("id,project_code,name,client_id,service,quantity,editor_id,qa_id,due_date,status,qa_status,created_at,brief,folder_url,clients(name),profiles!projects_editor_id_fkey(full_name)").order("created_at",{ascending:false})];
     if(isAdmin()) jobs.push(db.from("profiles").select("id,full_name").eq("role","editor").order("full_name"),db.from("project_financials").select("project_id,quote_usd,paid_usd"));
     const results=await Promise.all(jobs);
     const pr=results[0];
@@ -59,6 +59,8 @@
       if(results[1].error) console.error("FrameCrest editors load:",results[1].error);
       if(results[2].error) toast("Could not load project finances: "+results[2].error.message);
       await refreshClients();
+      const [teamResult,qaResult]=await Promise.all([db.from("profiles").select("id,full_name,role").neq("role","admin").order("full_name"),db.from("profiles").select("id,full_name").eq("role","qa").order("full_name")]);
+      team=teamResult.data||[];qaReviewers=qaResult.data||[];renderTeam();fillSelects();
       const balance=finances.reduce((a,x)=>a+Number(x.quote_usd||0)-Number(x.paid_usd||0),0);
       $("#stat-balance").textContent=money(balance);
       renderFinance();
@@ -72,6 +74,17 @@
     $("#recent-projects").innerHTML=projects.slice(0,6).map(projectRow).join("")||'<tr><td colspan="4" class="empty">No projects yet.</td></tr>';
   }
   function projectRow(p){return '<tr><td><strong>'+safe(p.project_code||"—")+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.service)+'</td><td>'+date(p.due_date)+'</td><td><span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span></td></tr>';}
+  async function refreshTeam(){
+    if(!isAdmin())return;
+    const {data,error}=await db.from("profiles").select("id,full_name,role").neq("role","admin").order("full_name");
+    if(error){toast("Could not load team: "+error.message);return;}
+    team=data||[];renderTeam();
+  }
+  function renderTeam(){
+    const counts={};projects.forEach(p=>{if(p.editor_id)counts[p.editor_id]=(counts[p.editor_id]||0)+1;if(p.qa_id)counts[p.qa_id]=(counts[p.qa_id]||0)+1;});
+    $("#team-table").innerHTML=team.map(m=>`<tr><td><strong>${safe(m.full_name||"Unnamed team member")}</strong></td><td><select class="inline-select team-role" data-id="${m.id}">${["client","editor","qa"].map(r=>`<option value="${r}" ${m.role===r?"selected":""}>${r==="qa"?"QA":r[0].toUpperCase()+r.slice(1)}</option>`).join("")}</select></td><td>${counts[m.id]||0}</td><td><button class="btn secondary team-save" data-id="${m.id}" type="button">Save role</button></td></tr>`).join("")||'<tr><td colspan="4" class="empty">No team accounts found.</td></tr>';
+    $(".team-save").forEach(btn=>btn.addEventListener("click",async()=>{const select=$(`.team-role[data-id="${btn.dataset.id}"]`);btn.disabled=true;const {error}=await db.from("profiles").update({role:select.value,client_id:select.value==="client"?team.find(x=>x.id===btn.dataset.id)?.client_id||null:null}).eq("id",btn.dataset.id);btn.disabled=false;if(error){toast("Could not update role: "+error.message);return;}toast("Team role updated.");await refresh();}));
+  }
   function renderProjects(){
     const term=($("#project-search")?.value||"").toLowerCase();
     const rows=projects.filter(p=>(p.name+" "+p.project_code+" "+p.service+" "+(p.clients?.name||"")).toLowerCase().includes(term));
@@ -86,7 +99,7 @@
     $$(".project-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const p=projects.find(x=>x.id===btn.dataset.id);if(!p)return;
       const form=$("#project-form");form.dataset.editId=p.id;
-      ["name","client_id","service","quantity","due_date","editor_id","brief","folder_url"].forEach(k=>{form.elements[k].value=p[k]??"";});
+      ["name","client_id","service","quantity","due_date","editor_id","qa_id","brief","folder_url"].forEach(k=>{form.elements[k].value=p[k]??"";});
       $("#project-modal h2").textContent="Edit project";
       $("#project-modal .eyebrow").textContent="PROJECT DETAILS";
       form.querySelector('button[type="submit"]').textContent="Save changes";
@@ -196,12 +209,13 @@
   }
   function fillSelects(){
     $("#project-client").innerHTML='<option value="">Select a client</option>'+clients.map(c=>'<option value="'+c.id+'">'+safe(c.name)+'</option>').join("");
-    $("#project-editor").innerHTML='<option value="">Unassigned</option>'+editors.map(e=>'<option value="'+e.id+'">'+safe(e.full_name)+'</option>').join("");
+    $("#project-editor").innerHTML='<option value="">Unassigned</option>'+editors.map(e=>'<option value="'+e.id+'">'+safe(e.full_name||"Unnamed editor")+'</option>').join("");
+    $("#project-qa").innerHTML='<option value="">Unassigned</option>'+qaReviewers.map(e=>'<option value="'+e.id+'">'+safe(e.full_name||"Unnamed QA reviewer")+'</option>').join("");
   }
   function setView(view){
     $$(".view").forEach(el=>el.classList.add("hidden")); $("#"+view+"-view").classList.remove("hidden");
     $$(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
-    $("#page-title").textContent=view.charAt(0).toUpperCase()+view.slice(1);
+    $("#page-title").textContent=view==="team"?"Team directory":view.charAt(0).toUpperCase()+view.slice(1);
   }
   $$(".nav-item").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
@@ -245,7 +259,7 @@
     e.preventDefault();const form=e.currentTarget,submit=form.querySelector('button[type="submit"]');
     if(submit.disabled)return;
     const f=Object.fromEntries(new FormData(form).entries());
-    const obj={name:String(f.name||"").trim(),client_id:f.client_id,service:f.service,quantity:Number(f.quantity),due_date:f.due_date||null,editor_id:f.editor_id||null,brief:String(f.brief||"").trim()||null,folder_url:String(f.folder_url||"").trim()||null};
+    const obj={name:String(f.name||"").trim(),client_id:f.client_id,service:f.service,quantity:Number(f.quantity),due_date:f.due_date||null,editor_id:f.editor_id||null,qa_id:f.qa_id||null,brief:String(f.brief||"").trim()||null,folder_url:String(f.folder_url||"").trim()||null};
     const editId=form.dataset.editId;submit.disabled=true;submit.textContent="Saving…";
     $("#project-message").textContent=editId?"Updating project…":"Creating project…";
     try{
