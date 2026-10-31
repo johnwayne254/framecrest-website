@@ -237,6 +237,28 @@
     $("#client-message").textContent="";
   }
   $("#new-client-open").addEventListener("click",()=>{resetClientForm();$("#client-modal").classList.remove("hidden");});
+  $("#new-team-open").addEventListener("click",()=>{$("#team-invite-form").reset();$("#team-invite-message").textContent="";$("#team-invite-modal").classList.remove("hidden");});
+  $("#team-invite-form").addEventListener("submit",async e=>{
+    e.preventDefault();
+    if(!isAdmin())return;
+    const form=e.currentTarget,submit=form.querySelector('button[type="submit"]');
+    const payload={full_name:form.full_name.value.trim(),email:form.email.value.trim(),role:form.role.value};
+    submit.disabled=true;submit.textContent="Sending invitation…";
+    $("#team-invite-message").textContent="Creating a separate staff account…";
+    try{
+      const {data,error}=await db.functions.invoke("invite-team-member",{body:payload});
+      if(error)throw error;
+      if(data?.error)throw new Error(data.error);
+      $("#team-invite-message").textContent="Invitation sent to "+payload.email+".";
+      toast("Team invitation sent.");
+      form.reset();await refresh();
+      setTimeout(()=>$("#team-invite-modal").classList.add("hidden"),1200);
+    }catch(err){
+      $("#team-invite-message").textContent=err.message||"Could not send the invitation.";
+      console.error("FrameCrest team invitation:",err);
+    }finally{submit.disabled=false;submit.textContent="Send invitation";}
+  });
+
   $$("[data-close]").forEach(b=>b.addEventListener("click",()=>{
     if(b.dataset.close==="client-modal") resetClientForm();
     if(b.dataset.close==="project-modal") resetProjectForm();
