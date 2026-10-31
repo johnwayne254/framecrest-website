@@ -42,7 +42,7 @@
     </section>
     <section id="projects-view" class="view hidden">
       <div class="toolbar"><div><h2>Project register</h2><p class="muted">Track briefs, production, quality checks and delivery.</p></div><input id="project-search" class="search" placeholder="Search projects…" type="search"></div>
-      <div class="content-card"><div class="table-wrap"><table><thead><tr><th>PROJECT</th><th>CLIENT</th><th>SERVICE</th><th>ASSIGNED TO</th><th>DUE DATE</th><th>STATUS</th><th>QA</th><th class="admin-only">ACTION</th></tr></thead><tbody id="projects-table"></tbody></table></div></div>
+      <div class="content-card"><div class="table-wrap"><table><thead><tr><th>PROJECT</th><th>CLIENT</th><th>SERVICE</th><th>ASSIGNED TO</th><th>DUE DATE</th><th>STATUS</th><th>QA</th><th>ACTION</th></tr></thead><tbody id="projects-table"></tbody></table></div></div>
     </section>
     <section id="clients-view" class="view hidden">
       <div class="toolbar"><div><h2>Clients</h2><p class="muted">Your client directory and account records.</p></div><button class="btn primary" id="new-client-open">＋ Add client</button></div>
@@ -66,6 +66,7 @@
 <label class="span-2">Project folder / delivery link<input name="folder_url" type="url" placeholder="https://…"></label>
 <div class="form-actions span-2"><button type="button" class="btn secondary" data-close="project-modal">Cancel</button><button class="btn primary" type="submit">Create project</button></div>
 </form><p class="message" id="project-message"></p></div></div>
+<div id="activity-modal" class="modal hidden"><div class="modal-card activity-modal-card"><div class="modal-head"><div><p class="eyebrow">PROJECT HISTORY</p><h2 id="activity-title">Project activity</h2><p class="muted" id="activity-summary"></p></div><button class="icon-button" data-close="activity-modal">×</button></div><div id="activity-list" class="activity-list"><p class="muted">Loading activity…</p></div></div></div>
 <div id="client-modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">CLIENT DIRECTORY</p><h2>Add a client</h2></div><button class="icon-button" data-close="client-modal">×</button></div>
 <form id="client-form" class="form-grid">
 <label>Company / client name<input name="name" required></label><label>Contact person<input name="contact_name"></label><label>Email<input name="email" type="email"></label><label>Phone<input name="phone"></label><label>City / state<input name="location"></label><label>Website (optional)<input name="website" type="url" placeholder="https://example.com (optional)"></label>
