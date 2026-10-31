@@ -33,7 +33,7 @@
     profile=p;
     $("#user-name").textContent=p.full_name||user.email; $("#user-role").textContent=p.role; $("#avatar").textContent=(p.full_name||user.email||"F").slice(0,1).toUpperCase();
     $("#welcome-title").textContent="Good to have you here, "+((p.full_name||"").split(" ")[0]||"");
-    $("#welcome-subtitle").textContent=p.role==="client"?"Follow the progress of your FrameCrest projects and access your project files.":p.role==="editor"?"Your assigned projects, production briefs and delivery deadlines.":"Here is what's happening across your workspace.";
+    $("#welcome-subtitle").textContent=p.role==="client"?"A clear view of your projects, progress and anything that needs your attention.":p.role==="editor"?"Your assigned projects, production briefs and delivery deadlines.":"Here is what's happening across your workspace.";
     $("#today-label").textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
     $$(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
     $("#clients-view").classList.toggle("hidden",!isAdmin());
@@ -69,8 +69,39 @@
   }
   function renderOverview(){
     const active=projects.filter(p=>["Awaiting files","In progress","Revisions"].includes(p.status)).length;
-    $("#stat-active").textContent=active; $("#stat-qa").textContent=projects.filter(p=>p.status==="In QA").length;
-    $("#stat-delivered").textContent=projects.filter(p=>p.status==="Delivered").length;
+    const inQA=projects.filter(p=>p.status==="In QA").length;
+    const delivered=projects.filter(p=>p.status==="Delivered").length;
+    const attention=projects.filter(p=>p.status==="Revisions"||p.qa_status==="Changes required").length;
+    $("#stat-active").textContent=active; $("#stat-qa").textContent=inQA;
+    $("#stat-delivered").textContent=delivered;
+    if(role()==="client"){
+      $("#stat-active").previousElementSibling.textContent="Active projects";
+      $("#stat-active").nextElementSibling.textContent="Projects currently being handled";
+      $("#stat-qa").previousElementSibling.textContent="In quality review";
+      $("#stat-qa").nextElementSibling.textContent="Being checked before delivery";
+      $("#stat-delivered").previousElementSibling.textContent="Completed projects";
+      $("#stat-delivered").nextElementSibling.textContent="Ready or already delivered";
+      $("#stat-balance").closest(".stat-card").classList.add("hidden");
+      let attentionCard=$("#stat-attention");
+      if(!attentionCard){
+        const card=document.createElement("article");
+        card.className="stat-card";
+        card.innerHTML='<span>Needs your attention</span><strong id="stat-attention">0</strong><small>Projects with requested changes</small>';
+        $("#stats-grid").append(card);
+        attentionCard=$("#stat-attention");
+      }
+      attentionCard.textContent=attention;
+      $("#overview-view .card-heading h3").textContent="Your recent projects";
+      $("#overview-view .card-heading .eyebrow").textContent="PROJECT UPDATES";
+      $("#overview-view .card-heading .text-button").textContent="View all projects →";
+    }else{
+      const attentionCard=$("#stat-attention");
+      if(attentionCard) attentionCard.closest(".stat-card").remove();
+      $("#stat-balance").closest(".stat-card").classList.toggle("hidden",!isAdmin());
+      $("#overview-view .card-heading h3").textContent="Recent projects";
+      $("#overview-view .card-heading .eyebrow").textContent="LATEST ACTIVITY";
+      $("#overview-view .card-heading .text-button").textContent="View all →";
+    }
     $("#recent-projects").innerHTML=projects.slice(0,6).map(projectRow).join("")||'<tr><td colspan="4" class="empty">No projects yet.</td></tr>';
   }
   function projectRow(p){return '<tr><td><strong>'+safe(p.project_code||"—")+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.service)+'</td><td>'+date(p.due_date)+'</td><td><span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span></td></tr>';}
