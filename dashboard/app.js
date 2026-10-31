@@ -87,14 +87,14 @@
   }
   function renderClients(){
     $("#clients-table").innerHTML=clients.map(c=>'<tr><td><strong>'+safe(c.name)+'</strong></td><td>'+safe(c.contact_name||"—")+'</td><td>'+safe(c.email||"—")+'</td><td>'+safe(c.location||"—")+'</td><td>'+projects.filter(p=>p.client_id===c.id).length+'</td><td><button class="btn secondary client-edit" data-id="'+c.id+'" type="button">Edit</button> <button class="btn secondary client-delete" data-id="'+c.id+'" type="button">Delete</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No clients added yet.</td></tr>';
-    $(".client-edit").forEach(btn=>btn.addEventListener("click",()=>{
+    $$(".client-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const c=clients.find(x=>x.id===btn.dataset.id);if(!c)return;
       const f=$("#client-form");f.dataset.editId=c.id;
       ["name","contact_name","email","phone","location","website"].forEach(k=>f.elements[k].value=c[k]||"");
       $("#client-modal h2").textContent="Edit client";f.querySelector('button[type="submit"]').textContent="Save changes";
       $("#client-message").textContent="";$("#client-modal").classList.remove("hidden");
     }));
-    $(".client-delete").forEach(btn=>btn.addEventListener("click",async()=>{
+    $$(".client-delete").forEach(btn=>btn.addEventListener("click",async()=>{
       const client=clients.find(c=>c.id===btn.dataset.id);
       if(!client) return;
       if(!window.confirm('Delete "'+client.name+'"? This cannot be undone.')) return;
