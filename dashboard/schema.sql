@@ -122,7 +122,7 @@ create policy "admin manage project financials" on public.project_financials for
 using (public.current_role() = 'admin') with check (public.current_role() = 'admin');
 
 grant usage on schema public to authenticated;
-grant select, insert, update on public.clients to authenticated;
+grant select, insert, update, delete on public.clients to authenticated;
 grant select, insert, update on public.projects to authenticated;
 grant select, insert, update on public.profiles to authenticated;
 grant select, insert, update on public.project_financials to authenticated;
