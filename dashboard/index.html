@@ -24,6 +24,7 @@
       <button class="nav-item active" data-view="overview"><span>▦</span> Overview</button>
       <button class="nav-item" data-view="projects"><span>▤</span> Projects</button>
       <button class="nav-item admin-only" data-view="clients"><span>♙</span> Clients</button>
+      <button class="nav-item admin-only" data-view="finance"><span>$</span> Finance</button>
     </nav>
     <div class="sidebar-bottom"><div class="profile-chip"><div class="avatar" id="avatar">F</div><div><strong id="user-name">Studio User</strong><small id="user-role">Team member</small></div></div><button id="sign-out" class="signout">Sign out ↗</button></div>
   </aside>
@@ -47,6 +48,10 @@
       <div class="toolbar"><div><h2>Clients</h2><p class="muted">Your client directory and account records.</p></div><button class="btn primary" id="new-client-open">＋ Add client</button></div>
       <div class="content-card"><div class="table-wrap"><table><thead><tr><th>CLIENT</th><th>CONTACT</th><th>EMAIL</th><th>LOCATION</th><th>PROJECTS</th></tr></thead><tbody id="clients-table"></tbody></table></div></div>
     </section>
+    <section id="finance-view" class="view hidden">
+      <div class="toolbar"><div><h2>Project finances</h2><p class="muted">Track quotes, payments and outstanding balances.</p></div></div>
+      <div class="content-card"><div class="table-wrap"><table><thead><tr><th>PROJECT</th><th>CLIENT</th><th>QUOTE (USD)</th><th>PAID (USD)</th><th>OUTSTANDING</th><th>ACTION</th></tr></thead><tbody id="finance-table"></tbody></table></div></div>
+    </section>
   </main>
 </div>
 <div id="project-modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">PROJECT INTAKE</p><h2>Create a project</h2></div><button class="icon-button" data-close="project-modal">×</button></div>
@@ -65,6 +70,8 @@
 <form id="client-form" class="form-grid">
 <label>Company / client name<input name="name" required></label><label>Contact person<input name="contact_name"></label><label>Email<input name="email" type="email"></label><label>Phone<input name="phone"></label><label>City / state<input name="location"></label><label>Website<input name="website" type="url"></label>
 <div class="form-actions span-2"><button type="button" class="btn secondary" data-close="client-modal">Cancel</button><button class="btn primary" type="submit">Save client</button></div></form><p class="message" id="client-message"></p></div></div>
+<div id="finance-modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">PROJECT FINANCES</p><h2>Update quote and payment</h2></div><button class="icon-button" data-close="finance-modal">×</button></div>
+<form id="finance-form" class="form-grid"><input type="hidden" name="project_id"><label>Quoted amount (USD)<input name="quote_usd" type="number" min="0" step="0.01" required></label><label>Amount paid (USD)<input name="paid_usd" type="number" min="0" step="0.01" required></label><div class="form-actions span-2"><button type="button" class="btn secondary" data-close="finance-modal">Cancel</button><button class="btn primary" type="submit">Save finances</button></div></form><p class="message" id="finance-message"></p></div></div>
 <div id="toast" class="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script>
 </body></html>
