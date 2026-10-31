@@ -135,7 +135,7 @@
     $("#client-message").textContent="";
   }
   $("#new-client-open").addEventListener("click",()=>{resetClientForm();$("#client-modal").classList.remove("hidden");});
-  $("[data-close]").forEach(b=>b.addEventListener("click",()=>{
+  $$("[data-close]").forEach(b=>b.addEventListener("click",()=>{
     if(b.dataset.close==="client-modal") resetClientForm();
     $("#"+b.dataset.close).classList.add("hidden");
   }));
