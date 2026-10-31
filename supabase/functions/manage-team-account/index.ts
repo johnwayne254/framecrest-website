@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
     if (!authHeader) return reply({ error: "Sign in as an administrator first." }, 401);
     const url = Deno.env.get("SUPABASE_URL")!, anonKey = Deno.env.get("SUPABASE_ANON_KEY")!, serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const caller = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } });
-    const token = authHeader.replace(/^Bearer\\s+/i, "");
+    const token = authHeader.replace(/^Bearer\s+/i, "");
     const { data: authData, error: authError } = await caller.auth.getUser(token);
     if (authError || !authData.user) return reply({ error: "Your session could not be verified." }, 401);
     const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
