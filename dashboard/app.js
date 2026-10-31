@@ -33,6 +33,7 @@
     profile=p;
     $("#user-name").textContent=p.full_name||user.email; $("#user-role").textContent=p.role; $("#avatar").textContent=(p.full_name||user.email||"F").slice(0,1).toUpperCase();
     $("#welcome-title").textContent="Good to have you here, "+((p.full_name||"").split(" ")[0]||"");
+    $("#welcome-subtitle").textContent=p.role==="client"?"Follow the progress of your FrameCrest projects and access your project files.":p.role==="editor"?"Your assigned projects, production briefs and delivery deadlines.":"Here is what's happening across your workspace.";
     $("#today-label").textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
     $$(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
     $("#clients-view").classList.toggle("hidden",!isAdmin());
@@ -75,10 +76,13 @@
     const term=($("#project-search")?.value||"").toLowerCase();
     const rows=projects.filter(p=>(p.name+" "+p.project_code+" "+p.service+" "+(p.clients?.name||"")).toLowerCase().includes(term));
     const allowedStatuses=isAdmin()?["Awaiting files","In progress","In QA","Revisions","Delivered","Cancelled"]:["In progress","In QA","Revisions"];
-    $("#projects-table").innerHTML=rows.map(p=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.clients?.name||"Your project")+'</td><td>'+safe(p.service)+'</td><td>'+safe(p.profiles?.full_name||"Unassigned")+'</td><td>'+date(p.due_date)+'</td><td>'+(isAdmin()||role()==="editor" ? '<select class="inline-select status-change" data-id="'+p.id+'">'+allowedStatuses.map(s=>'<option '+(s===p.status?'selected':'')+'>'+s+'</option>').join("")+'</select>' : '<span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span>')+'</td><td>'+(isAdmin()?'<select class="inline-select qa-change" data-id="'+p.id+'">'+["Not started","Pending review","Passed","Changes required"].map(s=>'<option '+(s===p.qa_status?'selected':'')+'>'+s+'</option>').join("")+'</select>':'<span class="status '+statusClass(p.qa_status)+'">'+safe(p.qa_status||"Not started")+'</span>')+'</td>'+'<td>'+(isAdmin()?'<button class="btn secondary project-edit" data-id="'+p.id+'" type="button">Edit</button> ':'')+'<button class="btn secondary project-activity" data-id="'+p.id+'" type="button">Activity</button></td>'+'</tr>').join("")||'<tr><td colspan="'+(isAdmin()?8:7)+'" class="empty">No matching projects.</td></tr>';
+    $("#projects-view h2").textContent=role()==="client"?"Your projects":role()==="editor"?"Assigned projects":"Project register";
+    $("#projects-view .toolbar p").textContent=role()==="client"?"Track progress, review updates and access your project files.":role()==="editor"?"Your assigned work, briefs, QA feedback and delivery deadlines.":"Track briefs, production, quality checks and delivery.";
+    $("#projects-table").innerHTML=rows.map(p=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.clients?.name||"Your project")+'</td><td>'+safe(p.service)+'</td><td>'+safe(p.profiles?.full_name||"Unassigned")+'</td><td>'+date(p.due_date)+'</td><td>'+(isAdmin()||role()==="editor" ? '<select class="inline-select status-change" data-id="'+p.id+'">'+allowedStatuses.map(s=>'<option '+(s===p.status?'selected':'')+'>'+s+'</option>').join("")+'</select>' : '<span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span>')+'</td><td>'+(isAdmin()?'<select class="inline-select qa-change" data-id="'+p.id+'">'+["Not started","Pending review","Passed","Changes required"].map(s=>'<option '+(s===p.qa_status?'selected':'')+'>'+s+'</option>').join("")+'</select>':'<span class="status '+statusClass(p.qa_status)+'">'+safe(p.qa_status||"Not started")+'</span>')+'</td>'+'<td>'+(isAdmin()?'<button class="btn secondary project-edit" data-id="'+p.id+'" type="button">Edit</button> ':'')+'<button class="btn secondary project-details" data-id="'+p.id+'" type="button">Details</button> <button class="btn secondary project-activity" data-id="'+p.id+'" type="button">Activity</button></td>'+'</tr>').join("")||'<tr><td colspan="'+(isAdmin()?8:7)+'" class="empty">No matching projects.</td></tr>';
     $$(".status-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("Project status updated.");await refresh();}}));
     $$(".qa-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({qa_status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("QA status updated.");await refresh();}}));
-    $$(".project-activity").forEach(btn=>btn.addEventListener("click",()=>openProjectActivity(btn.dataset.id)));
+    $(".project-details").forEach(btn=>btn.addEventListener("click",()=>openProjectDetails(btn.dataset.id)));
+    $(".project-activity").forEach(btn=>btn.addEventListener("click",()=>openProjectActivity(btn.dataset.id)));
     $$(".project-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const p=projects.find(x=>x.id===btn.dataset.id);if(!p)return;
       const form=$("#project-form");form.dataset.editId=p.id;
@@ -90,6 +94,28 @@
     }));
   }
   
+  function openProjectDetails(projectId){
+    const p=projects.find(x=>x.id===projectId);if(!p)return;
+    $("#details-title").textContent=p.name;
+    $("#details-code").textContent=p.project_code||"Project";
+    $("#details-client").textContent=p.clients?.name||"—";
+    $("#details-service").textContent=p.service||"—";
+    $("#details-due").textContent=date(p.due_date);
+    $("#details-status").textContent=p.status||"—";
+    $("#details-qa").textContent=p.qa_status||"Not started";
+    $("#details-editor").textContent=p.profiles?.full_name||"Not assigned";
+    $("#details-brief").textContent=p.brief||"No additional instructions provided.";
+    const url=String(p.folder_url||"").trim();
+    $("#details-file-wrap").innerHTML=url&&/^https?:\/\//i.test(url)
+      ?'<a class="btn primary" href="'+safe(url)+'" target="_blank" rel="noopener noreferrer">Open project files / delivery folder ↗</a>'
+      :'<p class="muted">No project folder or delivery link has been added yet.</p>';
+    $("#details-activity-open").dataset.id=p.id;
+    $("#project-details-modal").classList.remove("hidden");
+  }
+  $("#details-activity-open").addEventListener("click",()=>{
+    const id=$("#details-activity-open").dataset.id;
+    $("#project-details-modal").classList.add("hidden");openProjectActivity(id);
+  });
   async function openProjectActivity(projectId){
     const project=projects.find(p=>p.id===projectId);if(!project)return;
     $("#activity-title").textContent=project.project_code+" · "+project.name;
