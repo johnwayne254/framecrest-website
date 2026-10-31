@@ -37,7 +37,15 @@ create or replace function public.protect_account_type()
 returns trigger language plpgsql set search_path = public as $$
 begin
   if new.account_type is distinct from old.account_type then
-    raise exception 'Account type is permanent. Client accounts cannot be converted to staff accounts.';
+    if not (
+      old.account_type = 'client'
+      and old.client_id is null
+      and new.account_type = 'staff'
+      and new.client_id is null
+      and new.role in ('editor','qa')
+    ) then
+      raise exception 'Account type is permanent. Linked client accounts cannot be converted to staff accounts.';
+    end if;
   end if;
   if new.account_type = 'client' and new.role <> 'client' then
     raise exception 'Client accounts cannot be assigned staff roles.';
@@ -53,8 +61,8 @@ create trigger profiles_account_type_guard
 before update on public.profiles
 for each row execute function public.protect_account_type();
 
--- Classify the existing editor login as staff only if it is a separate,
--- newly-created staff account. Replace the email and run this statement separately:
+-- If a separate staff login was created and is still unlinked (client_id is NULL),
+-- classify that account as staff. Never use a real client's login here.
 -- update public.profiles p
 -- set account_type = 'staff', role = 'editor', client_id = null
 -- from auth.users u
@@ -63,4 +71,4 @@ for each row execute function public.protect_account_type();
 --   and p.account_type = 'client'
 --   and p.client_id is null;
 --
--- IMPORTANT: Do not run that statement for a real client account.
+-- Linked client accounts cannot be converted to staff accounts.
