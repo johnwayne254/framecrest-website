@@ -185,8 +185,26 @@
       ?'<a class="btn primary" href="'+safe(url)+'" target="_blank" rel="noopener noreferrer">Open project files / delivery folder ↗</a>'
       :'<p class="muted">No project folder or delivery link has been added yet.</p>';
     $("#details-activity-open").dataset.id=p.id;
+    $("#details-revision-open").dataset.id=p.id;
+    $("#details-revision-open").classList.toggle("hidden",role()!=="client"||p.status==="Delivered"||p.status==="Cancelled");
     $("#project-details-modal").classList.remove("hidden");
   }
+  $("#details-revision-open").addEventListener("click",()=>{
+    const p=projects.find(x=>x.id===$("#details-revision-open").dataset.id);if(!p)return;
+    $("#project-details-modal").classList.add("hidden");
+    const form=$("#revision-form");form.reset();form.project_id.value=p.id;
+    $("#revision-project-label").textContent=p.project_code+" · "+p.name;
+    $("#revision-message").textContent="";$("#revision-modal").classList.remove("hidden");
+  });
+  $("#revision-form").addEventListener("submit",async e=>{
+    e.preventDefault();const form=e.currentTarget,submit=form.querySelector('button[type="submit"]');if(submit.disabled)return;
+    const project=projects.find(p=>p.id===form.project_id.value);if(!project||role()!=="client")return;
+    const message=String(form.message.value||"").trim();if(!message){$("#revision-message").textContent="Please describe the change you need.";return;}
+    submit.disabled=true;submit.textContent="Submitting…";$("#revision-message").textContent="Sending your request…";
+    try{const {error}=await db.from("project_feedback").insert({project_id:project.id,client_id:profile.client_id,message});if(error)throw error;$("#revision-modal").classList.add("hidden");toast("Your change request has been sent.");}
+    catch(err){$("#revision-message").textContent="Could not submit request: "+(err.message||"Please try again.");}
+    finally{submit.disabled=false;submit.textContent="Submit request";}
+  });
   $("#details-activity-open").addEventListener("click",()=>{
     const id=$("#details-activity-open").dataset.id;
     $("#project-details-modal").classList.add("hidden");openProjectActivity(id);
