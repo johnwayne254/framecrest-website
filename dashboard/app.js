@@ -109,10 +109,37 @@
   function renderFinance(){
     if(!isAdmin()) return;
     const rows=projects.map(p=>{const f=finances.find(x=>x.project_id===p.id)||{quote_usd:0,paid_usd:0};return {p,f,balance:Number(f.quote_usd||0)-Number(f.paid_usd||0)};});
-    $("#finance-table").innerHTML=rows.map(({p,f,balance})=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.clients?.name||"—")+'</td><td>'+money(f.quote_usd)+'</td><td>'+money(f.paid_usd)+'</td><td><strong>'+money(balance)+'</strong></td><td><button class="btn secondary finance-edit" data-id="'+p.id+'">Edit</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No projects to show.</td></tr>';
-    $$(".finance-edit").forEach(btn=>btn.addEventListener("click",()=>{const f=finances.find(x=>x.project_id===btn.dataset.id)||{quote_usd:0,paid_usd:0};const form=$("#finance-form");form.project_id.value=btn.dataset.id;form.quote_usd.value=f.quote_usd||0;form.paid_usd.value=f.paid_usd||0;$("#finance-modal").classList.remove("hidden");}));
+    $("#finance-table").innerHTML=rows.map(({p,f,balance})=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.clients?.name||"—")+'</td><td>'+money(f.quote_usd)+'</td><td>'+money(f.paid_usd)+'</td><td><strong>'+money(balance)+'</strong></td><td><button class="btn secondary finance-edit" data-id="'+p.id+'" type="button">Quote</button> <button class="btn secondary payment-add" data-id="'+p.id+'" type="button">Add payment</button> <button class="btn secondary payment-history" data-id="'+p.id+'" type="button">History</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No projects to show.</td></tr>';
+    $$(".finance-edit").forEach(btn=>btn.addEventListener("click",()=>{
+      const f=finances.find(x=>x.project_id===btn.dataset.id)||{quote_usd:0};
+      const form=$("#finance-form");form.project_id.value=btn.dataset.id;form.quote_usd.value=f.quote_usd||0;
+      $("#finance-modal").classList.remove("hidden");
+    }));
+    $$(".payment-add").forEach(btn=>btn.addEventListener("click",()=>{
+      const p=projects.find(x=>x.id===btn.dataset.id);if(!p)return;
+      const form=$("#payment-form");form.reset();form.project_id.value=p.id;
+      form.payment_date.value=new Date().toISOString().slice(0,10);
+      $("#payment-title").textContent="Add payment · "+p.project_code;
+      $("#payment-message").textContent="";$("#payment-modal").classList.remove("hidden");
+    }));
+    $$(".payment-history").forEach(btn=>btn.addEventListener("click",()=>openPaymentHistory(btn.dataset.id)));
   }
-  function renderClients(){
+  async function openPaymentHistory(projectId){
+    const p=projects.find(x=>x.id===projectId);if(!p)return;
+    $("#payments-history-title").textContent=p.project_code+" · "+p.name;
+    $("#payments-history-summary").textContent=p.clients?.name||"Payment records";
+    $("#payments-history-list").innerHTML='<p class="muted">Loading payments…</p>';
+    $("#payments-history-modal").classList.remove("hidden");
+    const {data,error}=await db.from("project_payments").select("id,amount_usd,payment_date,payment_method,reference,notes,created_at").eq("project_id",projectId).order("payment_date",{ascending:false}).order("created_at",{ascending:false});
+    if(error){
+      $("#payments-history-list").innerHTML='<p class="message">Could not load payments. Please make sure the payment history database setup has been run in Supabase.</p>';
+      console.error("FrameCrest payment history:",error);return;
+    }
+    const rows=data||[],total=rows.reduce((sum,x)=>sum+Number(x.amount_usd||0),0);
+    $("#payments-history-summary").textContent=rows.length+" payment record"+(rows.length===1?"":"s")+" · "+money(total)+" received";
+    $("#payments-history-list").innerHTML=rows.map(x=>'<article class="activity-entry"><span class="activity-dot project_created"></span><div><strong>'+money(x.amount_usd)+' · '+safe(x.payment_method)+'</strong><p>'+date(x.payment_date)+' · '+safe(x.reference||"No reference")+(x.notes?" · "+safe(x.notes):"")+'</p></div></article>').join("")||'<p class="empty">No payments recorded yet.</p>';
+  }
+    function renderClients(){
     $("#clients-table").innerHTML=clients.map(c=>'<tr><td><strong>'+safe(c.name)+'</strong></td><td>'+safe(c.contact_name||"—")+'</td><td>'+safe(c.email||"—")+'</td><td>'+safe(c.location||"—")+'</td><td>'+projects.filter(p=>p.client_id===c.id).length+'</td><td><button class="btn secondary client-edit" data-id="'+c.id+'" type="button">Edit</button> <button class="btn secondary client-delete" data-id="'+c.id+'" type="button">Delete</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No clients added yet.</td></tr>';
     $$(".client-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const c=clients.find(x=>x.id===btn.dataset.id);if(!c)return;
@@ -208,11 +235,24 @@
 
     $("#finance-form").addEventListener("submit",async e=>{
     e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget).entries());
-    const quote=Number(f.quote_usd), paid=Number(f.paid_usd);
-    if(paid>quote){$("#finance-message").textContent="Amount paid cannot exceed the quoted amount.";return;}
-    const {error}=await db.from("project_financials").upsert({project_id:f.project_id,quote_usd:quote,paid_usd:paid,updated_at:new Date().toISOString()},{onConflict:"project_id"});
+    const quote=Number(f.quote_usd);
+    const {error}=await db.from("project_financials").upsert({project_id:f.project_id,quote_usd:quote,updated_at:new Date().toISOString()},{onConflict:"project_id"});
     if(error){$("#finance-message").textContent=error.message;return;}
-    $("#finance-modal").classList.add("hidden");toast("Project finances saved.");await refresh();
+    $("#finance-modal").classList.add("hidden");toast("Project quote saved.");await refresh();
+  });
+  $("#payment-form").addEventListener("submit",async e=>{
+    e.preventDefault();const form=e.currentTarget,submit=form.querySelector('button[type="submit"]');
+    if(submit.disabled)return;
+    const f=Object.fromEntries(new FormData(form).entries()),amount=Number(f.amount_usd);
+    if(!Number.isFinite(amount)||amount<=0){$("#payment-message").textContent="Enter a payment amount greater than zero.";return;}
+    submit.disabled=true;submit.textContent="Saving…";$("#payment-message").textContent="Recording payment…";
+    try{
+      const {error}=await db.from("project_payments").insert({project_id:f.project_id,amount_usd:amount,payment_date:f.payment_date,payment_method:f.payment_method,reference:String(f.reference||"").trim()||null,notes:String(f.notes||"").trim()||null,created_by:user.id});
+      if(error)throw error;
+      const projectId=f.project_id;$("#payment-modal").classList.add("hidden");
+      toast("Payment recorded.");await refresh();await openPaymentHistory(projectId);
+    }catch(err){$("#payment-message").textContent="Could not record payment: "+(err.message||"Please try again.");}
+    finally{submit.disabled=false;submit.textContent="Save payment";}
   });
   boot();
 })();
