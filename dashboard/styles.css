@@ -11,3 +11,14 @@
 .activity-dot.qa_changed{background:#D9B879}
 .activity-dot.project_created{background:#66866F}
 .activity-dot.details_updated{background:#8B83A8}
+
+.project-details-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:8px 0 22px}
+.project-details-grid>div{background:#FAFAF8;border:1px solid var(--line);padding:13px}
+.project-details-grid span{display:block;color:#89959C;font-size:9px;letter-spacing:1px;font-weight:700;margin-bottom:7px}
+.project-details-grid strong{display:block;color:var(--navy);font-size:12px;overflow-wrap:anywhere}
+.project-brief{border-top:1px solid var(--line);padding:17px 0}
+.project-brief h3{font:600 13px Montserrat;color:var(--navy);margin:0 0 9px}
+.project-brief p{font-size:12px;line-height:1.7;color:#52626D;white-space:pre-wrap;margin:0}
+.project-file-link{padding:4px 0 18px}
+.project-file-link .muted{font-size:11px}
+@media(max-width:650px){.project-details-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
