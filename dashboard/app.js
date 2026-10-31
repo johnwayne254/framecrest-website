@@ -59,7 +59,7 @@
       if(results[1].error) console.error("FrameCrest editors load:",results[1].error);
       if(results[2].error) toast("Could not load project finances: "+results[2].error.message);
       await refreshClients();
-      const [teamResult,qaResult]=await Promise.all([db.from("profiles").select("id,full_name,role,client_id,account_type").eq("account_type","staff").order("full_name"),db.from("profiles").select("id,full_name").eq("role","qa").order("full_name")]);
+      const [teamResult,qaResult]=await Promise.all([db.from("profiles").select("id,full_name,role,client_id,account_type").eq("account_type","staff").neq("role","admin").order("full_name"),db.from("profiles").select("id,full_name").eq("role","qa").order("full_name")]);
       team=teamResult.data||[];qaReviewers=qaResult.data||[];renderTeam();fillSelects();
       const balance=finances.reduce((a,x)=>a+Number(x.quote_usd||0)-Number(x.paid_usd||0),0);
       $("#stat-balance").textContent=money(balance);
