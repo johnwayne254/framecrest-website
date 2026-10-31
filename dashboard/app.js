@@ -59,7 +59,7 @@
       if(results[1].error) console.error("FrameCrest editors load:",results[1].error);
       if(results[2].error) toast("Could not load project finances: "+results[2].error.message);
       await refreshClients();
-      const [teamResult,qaResult]=await Promise.all([db.from("profiles").select("id,full_name,role,client_id,account_type").eq("account_type","staff").neq("role","admin").order("full_name"),db.from("profiles").select("id,full_name").eq("role","qa").order("full_name")]);
+      const [teamResult,qaResult]=await Promise.all([db.from("profiles").select("id,full_name,role,client_id,account_type,is_active").eq("account_type","staff").neq("role","admin").order("full_name"),db.from("profiles").select("id,full_name").eq("role","qa").order("full_name")]);
       team=teamResult.data||[];qaReviewers=qaResult.data||[];renderTeam();fillSelects();
       const balance=finances.reduce((a,x)=>a+Number(x.quote_usd||0)-Number(x.paid_usd||0),0);
       $("#stat-balance").textContent=money(balance);
@@ -82,8 +82,27 @@
   }
   function renderTeam(){
     const counts={};projects.forEach(p=>{if(p.editor_id)counts[p.editor_id]=(counts[p.editor_id]||0)+1;if(p.qa_id)counts[p.qa_id]=(counts[p.qa_id]||0)+1;});
-    $("#team-table").innerHTML=team.map(m=>`<tr><td><strong>${safe(m.full_name||"Unnamed team member")}</strong></td><td><select class="inline-select team-role" data-id="${m.id}">${["editor","qa"].map(r=>`<option value="${r}" ${m.role===r?"selected":""}>${r==="qa"?"QA":r[0].toUpperCase()+r.slice(1)}</option>`).join("")}</select></td><td>${counts[m.id]||0}</td><td><button class="btn secondary team-save" data-id="${m.id}" type="button">Save role</button></td></tr>`).join("")||'<tr><td colspan="4" class="empty">No team accounts found.</td></tr>';
+    $("#team-table").innerHTML=team.map(m=>`<tr><td><strong>${safe(m.full_name||"Unnamed team member")}</strong></td><td><select class="inline-select team-role" data-id="${m.id}">${["editor","qa"].map(r=>`<option value="${r}" ${m.role===r?"selected":""}>${r==="qa"?"QA":r[0].toUpperCase()+r.slice(1)}</option>`).join("")}</select></td><td>${counts[m.id]||0}</td><td><span class="status ${m.is_active===false?"cancelled":"delivered"}">${m.is_active===false?"Disabled":"Active"}</span></td><td><button class="btn secondary team-save" data-id="${m.id}" type="button">Save role</button> <button class="btn secondary team-toggle" data-id="${m.id}" data-active="${m.is_active===false?"false":"true"}" type="button">${m.is_active===false?"Enable":"Disable"}</button> <button class="btn secondary team-delete" data-id="${m.id}" type="button">Delete</button></td></tr>`).join("")||'<tr><td colspan="5" class="empty">No team accounts found.</td></tr>';
     $$(".team-save").forEach(btn=>btn.addEventListener("click",async()=>{const select=$(`.team-role[data-id="${btn.dataset.id}"]`);btn.disabled=true;const {error}=await db.from("profiles").update({role:select.value}).eq("id",btn.dataset.id);btn.disabled=false;if(error){toast("Could not update role: "+error.message);return;}toast("Team role updated.");await refresh();}));
+    $$(".team-toggle").forEach(btn=>btn.addEventListener("click",async()=>{
+      const member=team.find(x=>x.id===btn.dataset.id);if(!member)return;
+      const disabling=btn.dataset.active==="true",action=disabling?"disable":"enable";
+      if(!window.confirm((disabling?"Disable":"Enable")+" "+(member.full_name||"this team member")+"?"))return;
+      btn.disabled=true;
+      try{const {data,error}=await db.functions.invoke("manage-team-account",{body:{user_id:member.id,action}});if(error)throw error;if(data?.error)throw new Error(data.error);toast(disabling?"Staff account disabled.":"Staff account enabled.");await refresh();}
+      catch(err){toast("Could not "+action+" account: "+(err.message||"Please try again."));console.error("FrameCrest staff account:",err);}
+      finally{btn.disabled=false;}
+    }));
+    $$(".team-delete").forEach(btn=>btn.addEventListener("click",async()=>{
+      const member=team.find(x=>x.id===btn.dataset.id);if(!member)return;
+      const assigned=counts[member.id]||0;
+      const warning='Permanently delete '+(member.full_name||"this team member")+'? This removes their login and profile. '+(assigned?assigned+" assigned project(s) will become unassigned. ":"")+'This cannot be undone.';
+      if(!window.confirm(warning))return;
+      btn.disabled=true;
+      try{const {data,error}=await db.functions.invoke("manage-team-account",{body:{user_id:member.id,action:"delete"}});if(error)throw error;if(data?.error)throw new Error(data.error);toast("Staff account deleted.");await refresh();}
+      catch(err){toast("Could not delete account: "+(err.message||"Please try again."));console.error("FrameCrest staff deletion:",err);}
+      finally{btn.disabled=false;}
+    }));
   }
   function renderProjects(){
     const term=($("#project-search")?.value||"").toLowerCase();
