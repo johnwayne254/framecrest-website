@@ -95,9 +95,19 @@
   $("#new-client-open").addEventListener("click",()=>$("#client-modal").classList.remove("hidden"));
   $$("[data-close]").forEach(b=>b.addEventListener("click",()=>$("#"+b.dataset.close).classList.add("hidden")));
   $("#client-form").addEventListener("submit",async e=>{
-    e.preventDefault();const obj=Object.fromEntries(new FormData(e.currentTarget).entries());
-    const {error}=await db.from("clients").insert(obj);if(error){$("#client-message").textContent=error.message;return;}
-    e.currentTarget.reset();$("#client-modal").classList.add("hidden");toast("Client saved.");await refresh();
+    e.preventDefault();
+    $("#client-message").textContent="Saving client…";
+    const raw=Object.fromEntries(new FormData(e.currentTarget).entries());
+    const obj={name:String(raw.name||"").trim()};
+    ["contact_name","email","phone","location","website"].forEach(key=>{
+      const value=String(raw[key]||"").trim();
+      if(value) obj[key]=value;
+    });
+    if(!obj.name){$("#client-message").textContent="Please enter a client or company name.";return;}
+    const {error}=await db.from("clients").insert(obj);
+    if(error){$("#client-message").textContent="Could not save client: "+error.message;console.error("FrameCrest client insert:",error);return;}
+    e.currentTarget.reset();$("#client-message").textContent="";
+    $("#client-modal").classList.add("hidden");toast("Client saved.");await refresh();
   });
   $("#project-form").addEventListener("submit",async e=>{
     e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget).entries());
