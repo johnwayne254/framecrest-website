@@ -220,10 +220,16 @@
       $("#activity-list").innerHTML='<p class="message">Could not load project history. Please make sure the project activity database setup has been run in Supabase.</p>';
       console.error("FrameCrest project activity:",error);return;
     }
-    const entries=data||[];
-    const revisions=entries.filter(x=>x.activity_type==="revision_requested").length;
+    let entries=(data||[]).map(x=>({...x,entry_kind:"activity"}));
+    if(isAdmin()||role()==="client"){
+      const {data:feedback,error:feedbackError}=await db.from("project_feedback").select("id,message,status,created_at").eq("project_id",projectId).order("created_at",{ascending:false});
+      if(feedbackError){console.error("FrameCrest project feedback:",feedbackError);}
+      else entries=entries.concat((feedback||[]).map(x=>({...x,entry_kind:"feedback",activity_type:"revision_requested",actor_name:role()==="client"?"You":"Client",message:"Client request: "+x.message+" · "+x.status})));
+    }
+    entries.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+    const revisions=entries.filter(x=>x.entry_kind==="feedback").length+entries.filter(x=>x.activity_type==="revision_requested"&&x.entry_kind!=="feedback").length;
     $("#activity-summary").textContent=(project.clients?.name||"Project")+" · "+revisions+" revision request"+(revisions===1?"":"s");
-    $("#activity-list").innerHTML=entries.map(x=>'<article class="activity-entry"><span class="activity-dot '+safe(x.activity_type)+'"></span><div><strong>'+safe(x.message)+'</strong><p>'+(role()==="client"?"Project update":safe(x.actor_name||"Team member"))+' · '+new Date(x.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</p></div></article>').join("")||'<p class="empty">No activity recorded yet.</p>';
+    $("#activity-list").innerHTML=entries.map(x=>'<article class="activity-entry"><span class="activity-dot '+safe(x.activity_type)+'"></span><div><strong>'+safe(x.message)+'</strong><p>'+(x.entry_kind==="feedback"?(role()==="client"?"Submitted by you":"Submitted by client"):role()==="client"?"Project update":safe(x.actor_name||"Team member"))+' · '+new Date(x.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</p></div></article>').join("")||'<p class="empty">No activity recorded yet.</p>';
   }
   function renderFinance(){
     if(!isAdmin()) return;
