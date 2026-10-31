@@ -75,10 +75,20 @@
     const term=($("#project-search")?.value||"").toLowerCase();
     const rows=projects.filter(p=>(p.name+" "+p.project_code+" "+p.service+" "+(p.clients?.name||"")).toLowerCase().includes(term));
     const allowedStatuses=isAdmin()?["Awaiting files","In progress","In QA","Revisions","Delivered","Cancelled"]:["In progress","In QA","Revisions"];
-    $("#projects-table").innerHTML=rows.map(p=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.clients?.name||"Your project")+'</td><td>'+safe(p.service)+'</td><td>'+safe(p.profiles?.full_name||"Unassigned")+'</td><td>'+date(p.due_date)+'</td><td>'+ (isAdmin()||role()==="editor" ? '<select class="inline-select status-change" data-id="'+p.id+'">'+allowedStatuses.map(s=>'<option '+(s===p.status?'selected':'')+'>'+s+'</option>').join("")+'</select>' : '<span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span>')+'</td><td>'+ (isAdmin()?'<select class="inline-select qa-change" data-id="'+p.id+'">'+["Not started","Pending review","Passed","Changes required"].map(s=>'<option '+(s===p.qa_status?'selected':'')+'>'+s+'</option>').join("")+'</select>':'<span class="status '+statusClass(p.qa_status)+'">'+safe(p.qa_status||"Not started")+'</span>')+'</td></tr>').join("")||'<tr><td colspan="7" class="empty">No matching projects.</td></tr>';
+    $("#projects-table").innerHTML=rows.map(p=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.clients?.name||"Your project")+'</td><td>'+safe(p.service)+'</td><td>'+safe(p.profiles?.full_name||"Unassigned")+'</td><td>'+date(p.due_date)+'</td><td>'+(isAdmin()||role()==="editor" ? '<select class="inline-select status-change" data-id="'+p.id+'">'+allowedStatuses.map(s=>'<option '+(s===p.status?'selected':'')+'>'+s+'</option>').join("")+'</select>' : '<span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span>')+'</td><td>'+(isAdmin()?'<select class="inline-select qa-change" data-id="'+p.id+'">'+["Not started","Pending review","Passed","Changes required"].map(s=>'<option '+(s===p.qa_status?'selected':'')+'>'+s+'</option>').join("")+'</select>':'<span class="status '+statusClass(p.qa_status)+'">'+safe(p.qa_status||"Not started")+'</span>')+'</td>'+(isAdmin()?'<td><button class="btn secondary project-edit" data-id="'+p.id+'" type="button">Edit</button></td>':'')+'</tr>').join("")||'<tr><td colspan="'+(isAdmin()?8:7)+'" class="empty">No matching projects.</td></tr>';
     $$(".status-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("Project status updated.");await refresh();}}));
     $$(".qa-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({qa_status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("QA status updated.");await refresh();}}));
+    $$(".project-edit").forEach(btn=>btn.addEventListener("click",()=>{
+      const p=projects.find(x=>x.id===btn.dataset.id);if(!p)return;
+      const form=$("#project-form");form.dataset.editId=p.id;
+      ["name","client_id","service","quantity","due_date","editor_id","brief","folder_url"].forEach(k=>{form.elements[k].value=p[k]??"";});
+      $("#project-modal h2").textContent="Edit project";
+      $("#project-modal .eyebrow").textContent="PROJECT DETAILS";
+      form.querySelector('button[type="submit"]').textContent="Save changes";
+      $("#project-message").textContent="";$("#project-modal").classList.remove("hidden");
+    }));
   }
+  
   function renderFinance(){
     if(!isAdmin()) return;
     const rows=projects.map(p=>{const f=finances.find(x=>x.project_id===p.id)||{quote_usd:0,paid_usd:0};return {p,f,balance:Number(f.quote_usd||0)-Number(f.paid_usd||0)};});
@@ -126,7 +136,14 @@
   $$(".nav-item").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
   $("#project-search").addEventListener("input",renderProjects);
-  $("#new-project-open").addEventListener("click",()=>$("#project-modal").classList.remove("hidden"));
+  function resetProjectForm(){
+    const form=$("#project-form");form.reset();delete form.dataset.editId;
+    $("#project-modal h2").textContent="Create a project";
+    $("#project-modal .eyebrow").textContent="PROJECT INTAKE";
+    form.querySelector('button[type="submit"]').textContent="Create project";
+    $("#project-message").textContent="";
+  }
+  $("#new-project-open").addEventListener("click",()=>{resetProjectForm();$("#project-modal").classList.remove("hidden");});
   function resetClientForm(){
     const form=$("#client-form");
     form.reset();delete form.dataset.editId;
@@ -137,6 +154,7 @@
   $("#new-client-open").addEventListener("click",()=>{resetClientForm();$("#client-modal").classList.remove("hidden");});
   $$("[data-close]").forEach(b=>b.addEventListener("click",()=>{
     if(b.dataset.close==="client-modal") resetClientForm();
+    if(b.dataset.close==="project-modal") resetProjectForm();
     $("#"+b.dataset.close).classList.add("hidden");
   }));
   $("#client-form").addEventListener("submit",async e=>{
@@ -154,14 +172,24 @@
     finally{submit.disabled=false;submit.textContent=form.dataset.editId?"Save changes":"Save client";}
   });
   $("#project-form").addEventListener("submit",async e=>{
-    e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget).entries());
-    const obj={name:f.name,client_id:f.client_id,service:f.service,quantity:Number(f.quantity),due_date:f.due_date,editor_id:f.editor_id||null,brief:f.brief,folder_url:f.folder_url,status:"Awaiting files",qa_status:"Not started"};
-    const {data,error}=await db.from("projects").insert(obj).select("id").single();
-    if(error){$("#project-message").textContent=error.message;return;}
-    e.currentTarget.reset();$("#project-modal").classList.add("hidden");toast("Project created.");await refresh();
+    e.preventDefault();const form=e.currentTarget,submit=form.querySelector('button[type="submit"]');
+    if(submit.disabled)return;
+    const f=Object.fromEntries(new FormData(form).entries());
+    const obj={name:String(f.name||"").trim(),client_id:f.client_id,service:f.service,quantity:Number(f.quantity),due_date:f.due_date||null,editor_id:f.editor_id||null,brief:String(f.brief||"").trim()||null,folder_url:String(f.folder_url||"").trim()||null};
+    const editId=form.dataset.editId;submit.disabled=true;submit.textContent="Saving…";
+    $("#project-message").textContent=editId?"Updating project…":"Creating project…";
+    try{
+      const result=editId
+        ?await db.from("projects").update(obj).eq("id",editId).select("id").single()
+        :await db.from("projects").insert({...obj,status:"Awaiting files",qa_status:"Not started"}).select("id").single();
+      if(result.error)throw result.error;
+      resetProjectForm();$("#project-modal").classList.add("hidden");
+      toast(editId?"Project details updated.":"Project created.");await refresh();
+    }catch(err){$("#project-message").textContent="Could not save project: "+(err.message||"Please try again.");}
+    finally{submit.disabled=false;submit.textContent=form.dataset.editId?"Save changes":"Create project";}
   });
 
-  $("#finance-form").addEventListener("submit",async e=>{
+    $("#finance-form").addEventListener("submit",async e=>{
     e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget).entries());
     const quote=Number(f.quote_usd), paid=Number(f.paid_usd);
     if(paid>quote){$("#finance-message").textContent="Amount paid cannot exceed the quoted amount.";return;}
