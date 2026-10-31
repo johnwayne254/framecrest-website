@@ -38,20 +38,29 @@
     $("#clients-view").classList.toggle("hidden",!isAdmin());
     showApp(); await refresh();
   }
+  async function refreshClients(){
+    if(!isAdmin()) return;
+    const {data,error}=await db.from("clients").select("*").order("name");
+    if(error){toast("Could not load clients: "+error.message);console.error("FrameCrest clients load:",error);return false;}
+    clients=data||[];
+    renderClients(); fillSelects();
+    return true;
+  }
   async function refresh(){
-    let q=db.from("projects").select("id,project_code,name,client_id,service,quantity,editor_id,due_date,status,qa_status,created_at,brief,folder_url,clients(name),profiles!projects_editor_id_fkey(full_name)").order("created_at",{ascending:false});
-    const {data,error}=await q;
-    if(error){toast(error.message);return;} projects=data||[];
+    const jobs=[db.from("projects").select("id,project_code,name,client_id,service,quantity,editor_id,due_date,status,qa_status,created_at,brief,folder_url,clients(name),profiles!projects_editor_id_fkey(full_name)").order("created_at",{ascending:false})];
+    if(isAdmin()) jobs.push(db.from("profiles").select("id,full_name").eq("role","editor").order("full_name"),db.from("project_financials").select("project_id,quote_usd,paid_usd"));
+    const results=await Promise.all(jobs);
+    const pr=results[0];
+    if(pr.error){toast("Could not load projects: "+pr.error.message);console.error("FrameCrest projects load:",pr.error);}
+    else projects=pr.data||[];
     if(isAdmin()){
-      const [cr,er,fr]=await Promise.all([
-        db.from("clients").select("*").order("name"),
-        db.from("profiles").select("id,full_name").eq("role","editor").order("full_name"),
-        db.from("project_financials").select("project_id,quote_usd,paid_usd")
-      ]);
-      clients=cr.data||[]; editors=er.data||[]; finances=fr.data||[];
+      editors=results[1].data||[]; finances=results[2].data||[];
+      if(results[1].error) console.error("FrameCrest editors load:",results[1].error);
+      if(results[2].error) toast("Could not load project finances: "+results[2].error.message);
+      await refreshClients();
       const balance=finances.reduce((a,x)=>a+Number(x.quote_usd||0)-Number(x.paid_usd||0),0);
       $("#stat-balance").textContent=money(balance);
-      renderClients(); fillSelects(); renderFinance();
+      renderFinance();
     }
     renderProjects(); renderOverview();
   }
@@ -96,18 +105,30 @@
   $$("[data-close]").forEach(b=>b.addEventListener("click",()=>$("#"+b.dataset.close).classList.add("hidden")));
   $("#client-form").addEventListener("submit",async e=>{
     e.preventDefault();
-    $("#client-message").textContent="Saving client…";
-    const raw=Object.fromEntries(new FormData(e.currentTarget).entries());
+    const form=e.currentTarget, submit=form.querySelector('button[type="submit"]');
+    if(submit.disabled) return;
+    const raw=Object.fromEntries(new FormData(form).entries());
     const obj={name:String(raw.name||"").trim()};
     ["contact_name","email","phone","location","website"].forEach(key=>{
       const value=String(raw[key]||"").trim();
       if(value) obj[key]=value;
     });
     if(!obj.name){$("#client-message").textContent="Please enter a client or company name.";return;}
-    const {error}=await db.from("clients").insert(obj);
-    if(error){$("#client-message").textContent="Could not save client: "+error.message;console.error("FrameCrest client insert:",error);return;}
-    e.currentTarget.reset();$("#client-message").textContent="";
-    $("#client-modal").classList.add("hidden");toast("Client saved.");await refresh();
+    submit.disabled=true; const original=submit.textContent; submit.textContent="Saving…";
+    $("#client-message").textContent="Saving client…";
+    try{
+      const {data,error}=await db.from("clients").insert(obj).select("*").single();
+      if(error) throw error;
+      clients=[...clients,data].sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+      renderClients(); fillSelects();
+      form.reset(); $("#client-message").textContent="";
+      $("#client-modal").classList.add("hidden"); toast("Client saved successfully.");
+    }catch(error){
+      $("#client-message").textContent="Could not save client: "+(error.message||"Please try again.");
+      console.error("FrameCrest client insert:",error);
+    }finally{
+      submit.disabled=false; submit.textContent=original;
+    }
   });
   $("#project-form").addEventListener("submit",async e=>{
     e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget).entries());
