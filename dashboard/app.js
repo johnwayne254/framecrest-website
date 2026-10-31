@@ -87,6 +87,13 @@
   }
   function renderClients(){
     $("#clients-table").innerHTML=clients.map(c=>'<tr><td><strong>'+safe(c.name)+'</strong></td><td>'+safe(c.contact_name||"—")+'</td><td>'+safe(c.email||"—")+'</td><td>'+safe(c.location||"—")+'</td><td>'+projects.filter(p=>p.client_id===c.id).length+'</td><td><button class="btn secondary client-delete" data-id="'+c.id+'" type="button">Delete</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No clients added yet.</td></tr>';
+    $(".client-edit").forEach(btn=>btn.addEventListener("click",()=>{
+      const c=clients.find(x=>x.id===btn.dataset.id);if(!c)return;
+      const f=$("#client-form");f.dataset.editId=c.id;
+      ["name","contact_name","email","phone","location","website"].forEach(k=>f.elements[k].value=c[k]||"");
+      $("#client-modal h2").textContent="Edit client";f.querySelector('button[type="submit"]').textContent="Save changes";
+      $("#client-message").textContent="";$("#client-modal").classList.remove("hidden");
+    }));
     $(".client-delete").forEach(btn=>btn.addEventListener("click",async()=>{
       const client=clients.find(c=>c.id===btn.dataset.id);
       if(!client) return;
@@ -123,31 +130,18 @@
   $("#new-client-open").addEventListener("click",()=>$("#client-modal").classList.remove("hidden"));
   $$("[data-close]").forEach(b=>b.addEventListener("click",()=>$("#"+b.dataset.close).classList.add("hidden")));
   $("#client-form").addEventListener("submit",async e=>{
-    e.preventDefault();
-    const form=e.currentTarget, submit=form.querySelector('button[type="submit"]');
-    if(submit.disabled) return;
-    const raw=Object.fromEntries(new FormData(form).entries());
-    const obj={name:String(raw.name||"").trim()};
-    ["contact_name","email","phone","location","website"].forEach(key=>{
-      const value=String(raw[key]||"").trim();
-      if(value) obj[key]=value;
-    });
+    e.preventDefault();const form=e.currentTarget,submit=form.querySelector('button[type="submit"]');if(submit.disabled)return;
+    const raw=Object.fromEntries(new FormData(form).entries()),obj={name:String(raw.name||"").trim()};
+    ["contact_name","email","phone","location","website"].forEach(k=>{const v=String(raw[k]||"").trim();if(v)obj[k]=v;});
     if(!obj.name){$("#client-message").textContent="Please enter a client or company name.";return;}
-    submit.disabled=true; const original=submit.textContent; submit.textContent="Saving…";
-    $("#client-message").textContent="Saving client…";
+    const editId=form.dataset.editId;submit.disabled=true;submit.textContent="Saving…";$("#client-message").textContent=editId?"Updating client…":"Saving client…";
     try{
-      const {data,error}=await db.from("clients").insert(obj).select("*").single();
-      if(error) throw error;
-      clients=[...clients,data].sort((a,b)=>String(a.name).localeCompare(String(b.name)));
-      renderClients(); fillSelects();
-      form.reset(); $("#client-message").textContent="";
-      $("#client-modal").classList.add("hidden"); toast("Client saved successfully.");
-    }catch(error){
-      $("#client-message").textContent="Could not save client: "+(error.message||"Please try again.");
-      console.error("FrameCrest client insert:",error);
-    }finally{
-      submit.disabled=false; submit.textContent=original;
-    }
+      const result=editId?await db.from("clients").update(obj).eq("id",editId).select("*").single():await db.from("clients").insert(obj).select("*").single();
+      if(result.error)throw result.error;
+      clients=clients.filter(c=>c.id!==result.data.id).concat(result.data).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+      renderClients();fillSelects();form.reset();delete form.dataset.editId;$("#client-modal h2").textContent="Add a client";$("#client-modal").classList.add("hidden");toast(editId?"Client updated.":"Client saved.");
+    }catch(err){$("#client-message").textContent="Could not save client: "+(err.message||"Please try again.");}
+    finally{submit.disabled=false;submit.textContent="Save client";}
   });
   $("#project-form").addEventListener("submit",async e=>{
     e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget).entries());
