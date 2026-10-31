@@ -75,10 +75,11 @@
     const term=($("#project-search")?.value||"").toLowerCase();
     const rows=projects.filter(p=>(p.name+" "+p.project_code+" "+p.service+" "+(p.clients?.name||"")).toLowerCase().includes(term));
     const allowedStatuses=isAdmin()?["Awaiting files","In progress","In QA","Revisions","Delivered","Cancelled"]:["In progress","In QA","Revisions"];
-    $("#projects-table").innerHTML=rows.map(p=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.clients?.name||"Your project")+'</td><td>'+safe(p.service)+'</td><td>'+safe(p.profiles?.full_name||"Unassigned")+'</td><td>'+date(p.due_date)+'</td><td>'+(isAdmin()||role()==="editor" ? '<select class="inline-select status-change" data-id="'+p.id+'">'+allowedStatuses.map(s=>'<option '+(s===p.status?'selected':'')+'>'+s+'</option>').join("")+'</select>' : '<span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span>')+'</td><td>'+(isAdmin()?'<select class="inline-select qa-change" data-id="'+p.id+'">'+["Not started","Pending review","Passed","Changes required"].map(s=>'<option '+(s===p.qa_status?'selected':'')+'>'+s+'</option>').join("")+'</select>':'<span class="status '+statusClass(p.qa_status)+'">'+safe(p.qa_status||"Not started")+'</span>')+'</td>'+(isAdmin()?'<td><button class="btn secondary project-edit" data-id="'+p.id+'" type="button">Edit</button></td>':'')+'</tr>').join("")||'<tr><td colspan="'+(isAdmin()?8:7)+'" class="empty">No matching projects.</td></tr>';
+    $("#projects-table").innerHTML=rows.map(p=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.clients?.name||"Your project")+'</td><td>'+safe(p.service)+'</td><td>'+safe(p.profiles?.full_name||"Unassigned")+'</td><td>'+date(p.due_date)+'</td><td>'+(isAdmin()||role()==="editor" ? '<select class="inline-select status-change" data-id="'+p.id+'">'+allowedStatuses.map(s=>'<option '+(s===p.status?'selected':'')+'>'+s+'</option>').join("")+'</select>' : '<span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span>')+'</td><td>'+(isAdmin()?'<select class="inline-select qa-change" data-id="'+p.id+'">'+["Not started","Pending review","Passed","Changes required"].map(s=>'<option '+(s===p.qa_status?'selected':'')+'>'+s+'</option>').join("")+'</select>':'<span class="status '+statusClass(p.qa_status)+'">'+safe(p.qa_status||"Not started")+'</span>')+'</td>'+'<td>'+(isAdmin()?'<button class="btn secondary project-edit" data-id="'+p.id+'" type="button">Edit</button> ':'')+'<button class="btn secondary project-activity" data-id="'+p.id+'" type="button">Activity</button></td>'+'</tr>').join("")||'<tr><td colspan="'+(isAdmin()?8:7)+'" class="empty">No matching projects.</td></tr>';
     $$(".status-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("Project status updated.");await refresh();}}));
     $$(".qa-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({qa_status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("QA status updated.");await refresh();}}));
-    $$(".project-edit").forEach(btn=>btn.addEventListener("click",()=>{
+    $(".project-activity").forEach(btn=>btn.addEventListener("click",()=>openProjectActivity(btn.dataset.id)));
+    $(".project-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const p=projects.find(x=>x.id===btn.dataset.id);if(!p)return;
       const form=$("#project-form");form.dataset.editId=p.id;
       ["name","client_id","service","quantity","due_date","editor_id","brief","folder_url"].forEach(k=>{form.elements[k].value=p[k]??"";});
@@ -89,6 +90,22 @@
     }));
   }
   
+  async function openProjectActivity(projectId){
+    const project=projects.find(p=>p.id===projectId);if(!project)return;
+    $("#activity-title").textContent=project.project_code+" · "+project.name;
+    $("#activity-summary").textContent=project.clients?.name||"Project history";
+    $("#activity-list").innerHTML='<p class="muted">Loading activity…</p>';
+    $("#activity-modal").classList.remove("hidden");
+    const {data,error}=await db.from("project_activity").select("id,actor_name,activity_type,message,created_at").eq("project_id",projectId).order("created_at",{ascending:false});
+    if(error){
+      $("#activity-list").innerHTML='<p class="message">Could not load project history. Please make sure the project activity database setup has been run in Supabase.</p>';
+      console.error("FrameCrest project activity:",error);return;
+    }
+    const entries=data||[];
+    const revisions=entries.filter(x=>x.activity_type==="revision_requested").length;
+    $("#activity-summary").textContent=(project.clients?.name||"Project")+" · "+revisions+" revision request"+(revisions===1?"":"s");
+    $("#activity-list").innerHTML=entries.map(x=>'<article class="activity-entry"><span class="activity-dot '+safe(x.activity_type)+'"></span><div><strong>'+safe(x.message)+'</strong><p>'+safe(x.actor_name||"Team member")+' · '+new Date(x.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</p></div></article>').join("")||'<p class="empty">No activity recorded yet.</p>';
+  }
   function renderFinance(){
     if(!isAdmin()) return;
     const rows=projects.map(p=>{const f=finances.find(x=>x.project_id===p.id)||{quote_usd:0,paid_usd:0};return {p,f,balance:Number(f.quote_usd||0)-Number(f.paid_usd||0)};});
