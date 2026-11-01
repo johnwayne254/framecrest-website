@@ -27,7 +27,7 @@
       <button class="nav-item admin-only" data-view="requests"><span>▧</span> Project requests</button>
       <button class="nav-item admin-only" data-view="clients"><span>♙</span> Clients</button>
       <button class="nav-item" data-view="finance"><span>$</span> Finance</button>
-      <button class="nav-item admin-only" data-view="team"><span>♙</span> Team</button>
+      <button class="nav-item reports-access" data-view="reports" id="reports-nav"><span>▥</span> Reports</button><button class="nav-item admin-only" data-view="team"><span>♙</span> Team</button>
     </nav>
     <div class="sidebar-bottom"><div class="profile-chip"><div class="avatar" id="avatar">F</div><div><strong id="user-name">Studio User</strong><small id="user-role">Team member</small></div></div><button id="sign-out" class="signout">Sign out ↗</button></div>
   </aside>
@@ -72,6 +72,21 @@
       <div class="content-card finance-report-card"><div class="card-heading"><div><p class="eyebrow">CASH FLOW</p><h3 id="finance-chart-title">Revenue by day</h3></div><span class="muted" id="finance-payment-count">0 payments</span></div><div id="finance-chart" class="finance-chart"><p class="empty">Payment activity will appear here.</p></div></div>
       <div class="content-card"><div class="card-heading"><div><p class="eyebrow">PROJECT ACCOUNTS</p><h3>Quotes and balances</h3></div></div><div class="table-wrap"><table><thead><tr><th>PROJECT</th><th>CLIENT</th><th>QUOTE (USD)</th><th>PAID (USD)</th><th>OUTSTANDING</th><th>ACTION</th></tr></thead><tbody id="finance-table"></tbody></table></div></div>
       <div class="content-card finance-invoices"><div class="card-heading"><div><p class="eyebrow">BILLING</p><h3>Invoices</h3></div><span class="muted" id="invoice-summary"></span></div><div class="table-wrap"><table><thead><tr><th>INVOICE</th><th>PROJECT</th><th>ISSUED</th><th>DUE</th><th>AMOUNT</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody id="invoices-table"></tbody></table></div></div>
+    </section>
+    <section id="reports-view" class="view hidden reports-access">
+      <div class="toolbar"><div><h2>Reporting centre</h2><p class="muted" id="reports-intro">Choose a report to explore performance and activity.</p></div><span class="secure-pill">Private reporting</span></div>
+      <div class="report-controls content-card">
+        <label>Report category<select id="report-category"><option value="">Choose a report</option></select></label>
+        <label>Start date<input id="report-start-date" type="date"></label>
+        <label>End date<input id="report-end-date" type="date"></label>
+        <button class="btn secondary" id="report-reset-dates" type="button">Reset dates</button>
+      </div>
+      <div class="report-category-grid" id="report-category-grid"></div>
+      <div class="content-card report-workspace" id="report-workspace">
+        <div class="card-heading"><div><p class="eyebrow">REPORT PREVIEW</p><h3 id="report-title">Select a report category</h3></div><span class="muted" id="report-period-label">Choose a date range</span></div>
+        <div class="report-empty"><span class="report-empty-icon">▥</span><strong>Your reports will appear here</strong><p>Choose a category and date range. Report data and export options will be added in the next implementation stage.</p></div>
+      </div>
+      <div class="content-card report-history-card"><div class="card-heading"><div><p class="eyebrow">REPORT ARCHIVE</p><h3>Report history</h3></div></div><p class="muted">Previously generated reports will be listed here once report generation and archive storage are enabled.</p></div>
     </section>
     <section id="team-view" class="view hidden">
       <div class="toolbar"><div><h2>Team directory</h2><p class="muted">Invite staff and manage Editor or QA responsibilities.</p></div><button class="btn primary" id="new-team-open" type="button">＋ Invite team member</button></div>
