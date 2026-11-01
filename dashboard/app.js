@@ -351,7 +351,7 @@
     const reportsNav=$("#reports-nav");if(reportsNav)reportsNav.classList.toggle("hidden",!["admin","client"].includes(role()));const monthlySummaryButton=$("#generate-monthly-summary");if(monthlySummaryButton)monthlySummaryButton.classList.toggle("hidden",!isAdmin());
     $("#clients-view").classList.toggle("hidden",!isAdmin());
     $("#messages-nav").classList.toggle("hidden",role()==="editor");
-    const financeNav=$('.nav-item[data-view="finance"]')[0];if(financeNav)financeNav.classList.toggle("hidden",role()==="editor");
+    const financeNav=$(' .nav-item[data-view="finance"]'.trim());if(financeNav)financeNav.classList.toggle("hidden",role()!=="admin"&&role()!=="client");$("#finance-view").classList.toggle("hidden",role()!=="admin"&&role()!=="client");
     showApp(); await refresh(); await subscribeToNotifications();
   }
   async function refreshClients(){
@@ -844,7 +844,7 @@
   $("#messages-refresh").addEventListener("click",refreshMessageInbox);
   function setView(view){
     if(view==="reports"&&!["admin","client"].includes(role()))return;
-    if(view==="finance"&&role()==="editor")return;
+    if(view==="finance"&&!["admin","client"].includes(role()))return;
     $$(".view").forEach(el=>el.classList.add("hidden"));$("#"+view+"-view").classList.remove("hidden");
     $$(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
     $("#page-title").textContent=view==="team"?"Team directory":view.charAt(0).toUpperCase()+view.slice(1);
