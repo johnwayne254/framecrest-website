@@ -22,7 +22,7 @@ For a new Supabase project, the current `dashboard/schema.sql` includes the perf
 | Revision avoidance | 10% | 100 minus revision requests per submission, with a floor of zero |
 | Consistency | 10% | Active production weeks divided by observed weeks since the first recorded production event |
 
-If a measure has no usable records in the selected period, it is excluded and the remaining weights are normalized. The dashboard shows the weight coverage alongside each overall score.
+If a measure has no usable records in the selected period, it is excluded and the remaining weights are normalized. The dashboard shows weight coverage alongside each editor. An overall score is withheld until at least 50% of the score weight has usable data, preventing a single available measure from looking like a complete assessment.
 
 ## Event tracking
 
