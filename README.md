@@ -29,10 +29,10 @@ Every commit to the connected production branch triggers a fresh deployment.
 ## Required before public launch
 Open `config.js` and fill these three settings:
 1. **WhatsApp:** `whatsappNumber` — full international number with digits only, including the country code. Example format for Kenya: `2547XXXXXXXX`. Do not include a plus sign or spaces.
-2. **Enquiry form:** `formspreeEndpoint` — create a form at [Formspree](https://formspree.io/) and paste its endpoint, normally shaped like `https://formspree.io/f/xxxxxxxx`. Confirm the recipient email and test a real submission. The form button stays disabled until this is configured.
+2. **Enquiry form:** `formSubmitEmail` — the destination email for website enquiries. The current setting is `framecrest.media@gmail.com`. The first form submission triggers a FormSubmit activation email; the mailbox owner must click its confirmation link before new enquiries are delivered. The site uses FormSubmit's AJAX endpoint so visitors remain on the Contact page.
 3. **Instagram:** `instagramUrl` — the full FrameCrest profile URL. The footer link stays hidden until this is configured.
 
-The endpoint is a public form identifier, not a password or secret key.
+The website includes a Privacy Notice at `privacy.html`. Review it and confirm it matches the studio's actual data-handling practices before launch. FormSubmit's current documentation says it retains submissions for 30 days; email copies in the destination inbox are managed separately.
 
 ## Portfolio imagery
 The current Unsplash images are temporary visual references, not commissioned FrameCrest projects. Replace them with photographs owned by FrameCrest or licensed for this use. Update each image's alt text so it describes the actual photo. The portfolio page deliberately labels the current gallery as illustrative.
