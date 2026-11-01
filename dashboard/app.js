@@ -632,7 +632,9 @@
     const raw=editorsList.map(editor=>{
       const events=performanceEvents.filter(e=>e.editor_id===editor.id&&inRange(e.created_at));
       const reviews=qualityReviews.filter(r=>r.editor_id===editor.id&&inRange(r.created_at));
-      const delivered=events.filter(e=>e.event_type==="delivered");
+      const deliveredEvents=events.filter(e=>e.event_type==="delivered");
+      const deliveredByProject=new Map();deliveredEvents.forEach(e=>{if(!deliveredByProject.has(e.project_id))deliveredByProject.set(e.project_id,e);});
+      const delivered=[...deliveredByProject.values()];
       const submitted=events.filter(e=>e.event_type==="submitted_to_qa"||e.event_type==="resubmitted");
       const revisions=events.filter(e=>e.event_type==="revision_requested");
       const quality=reviews.length?reviews.reduce((sum,r)=>sum+Number(r.quality_score||0),0)/reviews.length:null;
