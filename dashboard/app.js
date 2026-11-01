@@ -365,17 +365,17 @@
   }
   async function refresh(){
     const jobs=[db.from("projects").select("id,project_code,name,client_id,service,quantity,editor_id,qa_id,due_date,status,qa_status,created_at,brief,folder_url,clients(name),profiles!projects_editor_id_fkey(full_name),qa_profile:profiles!projects_qa_id_fkey(full_name)").order("created_at",{ascending:false})];
-    jobs.push(db.from("project_financials").select("project_id,quote_usd,paid_usd"));
+    if(role()!=="editor") jobs.push(db.from("project_financials").select("project_id,quote_usd,paid_usd"));
     if(isAdmin()) jobs.push(db.from("profiles").select("id,full_name").eq("role","editor").order("full_name"));
     const results=await Promise.all(jobs);
     const pr=results[0];
     if(pr.error){toast("Could not load projects: "+pr.error.message);console.error("FrameCrest projects load:",pr.error);}
     else projects=pr.data||[];
-    finances=results[1].data||[];
-    if(results[1].error) console.error("FrameCrest project finances:",results[1].error);
+    finances=role()==="editor"?[]:(results[1]?.data||[]);
+    if(role()!=="editor"&&results[1]?.error) console.error("FrameCrest project finances:",results[1].error);
     if(isAdmin()){
-      editors=results[2].data||[];
-      if(results[2].error) console.error("FrameCrest editors load:",results[2].error);
+      editors=results[2]?.data||[];
+      if(results[2]?.error) console.error("FrameCrest editors load:",results[2].error);
       await refreshClients();
       const [teamResult,qaResult]=await Promise.all([db.from("profiles").select("id,full_name,role,client_id,account_type,is_active").eq("account_type","staff").neq("role","admin").order("full_name"),db.from("profiles").select("id,full_name").eq("role","qa").order("full_name")]);
       team=teamResult.data||[];qaReviewers=qaResult.data||[];renderTeam();fillSelects();
