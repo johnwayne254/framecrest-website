@@ -27,7 +27,7 @@
       <button class="nav-item admin-only" data-view="requests"><span>▧</span> Project requests</button>
       <button class="nav-item admin-only" data-view="clients"><span>♙</span> Clients</button>
       <button class="nav-item" data-view="finance"><span>$</span> Finance</button>
-      <button class="nav-item reports-access" data-view="reports" id="reports-nav"><span>▥</span> Reports</button><button class="nav-item admin-only" data-view="team"><span>♙</span> Team</button>
+      <button class="nav-item reports-access" data-view="reports" id="reports-nav"><span>▥</span> Reports</button><button class="nav-item admin-only" data-view="team"><span>♙</span> Team</button><button class="nav-item admin-only" data-view="performance"><span>▤</span> Performance</button><button class="nav-item editor-only hidden" data-view="editor-performance"><span>▤</span> My performance</button>
     </nav>
     <div class="sidebar-bottom"><div class="profile-chip"><div class="avatar" id="avatar">F</div><div><strong id="user-name">Studio User</strong><small id="user-role">Team member</small></div></div><button id="sign-out" class="signout">Sign out ↗</button></div>
   </aside>
@@ -102,6 +102,72 @@
     <section id="team-view" class="view hidden">
       <div class="toolbar"><div><h2>Team directory</h2><p class="muted">Invite staff and manage Editor or QA responsibilities.</p></div><button class="btn primary" id="new-team-open" type="button">＋ Invite team member</button></div>
       <div class="content-card"><div class="table-wrap"><table><thead><tr><th>TEAM MEMBER</th><th>WORKSPACE ROLE</th><th>PROJECTS / WORK HISTORY</th><th>ACCOUNT</th><th>ACTIONS</th></tr></thead><tbody id="team-table"></tbody></table></div></div>
+    </section>
+    <section id="performance-view" class="view hidden">
+      <div class="toolbar">
+        <div><h2>Editor performance</h2><p class="muted">A balanced view of quality, delivery, output, revisions and consistency.</p></div>
+        <button class="btn secondary" id="performance-refresh" type="button">Refresh data</button>
+      </div>
+      <div class="content-card performance-filters">
+        <label>Reporting period
+          <select id="performance-period">
+            <option value="30" selected>Last 30 days</option>
+            <option value="90">Last 90 days</option>
+            <option value="month">Current month</option>
+            <option value="custom">Custom dates</option>
+          </select>
+        </label>
+        <div id="performance-date-controls" class="performance-date-controls hidden">
+          <label>Start date<input type="date" id="performance-start"></label>
+          <label>End date<input type="date" id="performance-end"></label>
+        </div>
+        <span class="muted" id="performance-period-label"></span>
+      </div>
+      <div class="stats-grid performance-summary" id="performance-summary"></div>
+      <p class="performance-note" id="performance-note">Performance data will appear after the tracking migration is applied.</p>
+      <div class="content-card">
+        <div class="card-heading"><div><p class="eyebrow">BALANCED SCORECARD</p><h3>Editor performance by period</h3></div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>EDITOR</th><th>OVERALL</th><th>QUALITY<br>(35%)</th><th>ON TIME<br>(25%)</th><th>PRODUCTIVITY<br>(20%)</th><th>REVISION AVOIDANCE<br>(10%)</th><th>CONSISTENCY<br>(10%)</th><th>DELIVERED</th></tr></thead>
+            <tbody id="performance-table"><tr><td colspan="8" class="empty">Loading performance data…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    <section id="editor-performance-view" class="view hidden">
+      <div class="toolbar">
+        <div><h2>My performance</h2><p class="muted">Your personal progress, quality feedback and delivery record.</p></div>
+        <button class="btn secondary" id="editor-performance-refresh" type="button">Refresh data</button>
+      </div>
+      <div class="content-card performance-filters">
+        <label>Reporting period
+          <select id="editor-performance-period">
+            <option value="30" selected>Last 30 days</option>
+            <option value="90">Last 90 days</option>
+            <option value="month">Current month</option>
+            <option value="custom">Custom dates</option>
+          </select>
+        </label>
+        <div id="editor-performance-date-controls" class="performance-date-controls hidden">
+          <label>Start date<input type="date" id="editor-performance-start"></label>
+          <label>End date<input type="date" id="editor-performance-end"></label>
+        </div>
+        <span class="muted" id="editor-performance-period-label"></span>
+      </div>
+      <div class="stats-grid performance-summary" id="editor-performance-summary"></div>
+      <p class="performance-note" id="editor-performance-note">Your performance data will appear as production events and reviews are recorded.</p>
+      <div class="content-card">
+        <div class="card-heading"><div><p class="eyebrow">YOUR PRODUCTION RECORD</p><h3>Recent activity</h3></div></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>DATE</th><th>PROJECT</th><th>ACTIVITY</th><th>DETAILS</th></tr></thead>
+          <tbody id="editor-performance-activity"><tr><td colspan="4" class="empty">Loading your activity…</td></tr></tbody>
+        </table></div>
+      </div>
+      <div class="content-card">
+        <div class="card-heading"><div><p class="eyebrow">QUALITY & FEEDBACK</p><h3>Your latest reviews</h3></div></div>
+        <div id="editor-performance-reviews" class="editor-performance-reviews"></div>
+      </div>
     </section>
 
   </main>

@@ -3,7 +3,7 @@
   const configured = cfg.supabaseUrl && cfg.supabaseAnonKey && !cfg.supabaseUrl.includes("YOUR_") && !cfg.supabaseAnonKey.includes("YOUR_");
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
-  let db, user, profile, projects = [], clients = [], editors = [], qaReviewers = [], finances = [], team = [], projectRequests = [], inboxRows = [], paymentRecords = [], invoiceRecords = [], qualityReviews = [];
+  let db, user, profile, projects = [], clients = [], editors = [], qaReviewers = [], finances = [], team = [], projectRequests = [], inboxRows = [], paymentRecords = [], invoiceRecords = [], qualityReviews = [], performanceEvents = [], performanceEventsError = null;
   const money = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(Number(n||0));
   const safe = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const date = v => v ? new Date(v+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
@@ -388,7 +388,12 @@
       renderFinance();
     }
     const reviewResult=await db.from("editor_quality_reviews").select("id,project_id,editor_id,reviewer_id,quality_score,feedback,created_at,updated_at").order("created_at",{ascending:false}); qualityReviews=reviewResult.data||[]; if(reviewResult.error)console.warn("Editor quality reviews:",reviewResult.error.message);
-    renderProjects(); renderOverview(); renderEditorQualityPanel();
+    if(isAdmin()||role()==="editor"){
+      const eventResult=await db.from("editor_work_events").select("id,project_id,editor_id,editor_name,event_type,details,created_at").order("created_at",{ascending:false}).limit(5000);
+      performanceEvents=eventResult.data||[];performanceEventsError=eventResult.error?eventResult.error.message:null;
+      if(eventResult.error)console.warn("Editor performance events:",eventResult.error.message);
+    }else{performanceEvents=[];performanceEventsError=null;}
+    renderProjects(); renderOverview(); renderEditorQualityPanel(); renderEditorPerformance(); renderEditorPersonalPerformance();
     const ids=projects.map(p=>p.id);
     if(ids.length){
       const [payResult,invoiceResult]=await Promise.all([
@@ -583,6 +588,168 @@
     }).join("");
     $("#editor-quality-summary").innerHTML='<div class="editor-quality-metrics"><div><small>Reviews received</small><strong>'+reviews.length+'</strong></div><div><small>Average quality score</small><strong>'+(average===null?"—":average+"/100")+'</strong></div></div>'+(items||'<p class="empty">No quality feedback yet. Reviews from QA and Admin will appear here.</p>');
   }
+
+  function performanceDateRange(){
+    const today=new Date();
+    const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    const end=$("#performance-end")?.value||iso(today);
+    const period=$("#performance-period")?.value||"30";
+    let start;
+    if(period==="custom"){
+      start=$("#performance-start")?.value||iso(new Date(today.getFullYear(),today.getMonth(),1));
+      if($("#performance-start")&&!$("#performance-start").value)$("#performance-start").value=start;
+      if($("#performance-end")&&!$("#performance-end").value)$("#performance-end").value=end;
+    }else if(period==="month"){
+      start=iso(new Date(today.getFullYear(),today.getMonth(),1));
+    }else{
+      const days=period==="90"?89:29;
+      const d=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+      d.setDate(d.getDate()-days);start=iso(d);
+    }
+    return {start,end,valid:start<=end};
+  }
+  function renderEditorPerformance(){
+    const host=$("#performance-table");
+    if(!host||!isAdmin())return;
+    const range=performanceDateRange();
+    $("#performance-date-controls")?.classList.toggle("hidden",$("#performance-period").value!=="custom");
+    $("#performance-period-label").textContent=range.start+" to "+range.end;
+    if(!range.valid){
+      $("#performance-summary").innerHTML="";
+      host.innerHTML='<tr><td colspan="8" class="empty">The start date must be on or before the end date.</td></tr>';
+      return;
+    }
+    if(performanceEventsError){
+      $("#performance-summary").innerHTML="";
+      host.innerHTML='<tr><td colspan="8" class="empty">Performance tracking is not available yet. Apply dashboard/editor_performance.sql in Supabase, then refresh this page. Details: '+safe(performanceEventsError)+'</td></tr>';
+      $("#performance-note").textContent="The dashboard code is ready, but the editor performance database migration has not been confirmed.";
+      return;
+    }
+    const inRange=value=>{const d=String(value||"").slice(0,10);return d>=range.start&&d<=range.end;};
+    const editorMap=new Map(team.filter(m=>m.role==="editor").map(m=>[m.id,m]));
+    performanceEvents.forEach(e=>{if(e.editor_id&&!editorMap.has(e.editor_id))editorMap.set(e.editor_id,{id:e.editor_id,full_name:e.editor_name||"Former editor",role:"editor",is_active:false});});
+    const editorsList=[...editorMap.values()];
+    const raw=editorsList.map(editor=>{
+      const events=performanceEvents.filter(e=>e.editor_id===editor.id&&inRange(e.created_at));
+      const reviews=qualityReviews.filter(r=>r.editor_id===editor.id&&inRange(r.created_at));
+      const deliveredEvents=events.filter(e=>e.event_type==="delivered");
+      const deliveredByProject=new Map();deliveredEvents.forEach(e=>{if(!deliveredByProject.has(e.project_id))deliveredByProject.set(e.project_id,e);});
+      const delivered=[...deliveredByProject.values()];
+      const submitted=events.filter(e=>e.event_type==="submitted_to_qa"||e.event_type==="resubmitted");
+      const revisions=events.filter(e=>e.event_type==="revision_requested");
+      const quality=reviews.length?reviews.reduce((sum,r)=>sum+Number(r.quality_score||0),0)/reviews.length:null;
+      const dueEvents=delivered.filter(e=>e.details&&e.details.due_date);
+      const onTime=dueEvents.filter(e=>String(e.created_at).slice(0,10)<=String(e.details.due_date).slice(0,10)).length;
+      const onTimeScore=dueEvents.length?onTime/dueEvents.length*100:null;
+      const revisionScore=submitted.length?Math.max(0,100-(revisions.length/submitted.length)*100):null;
+      const productive=events.filter(e=>["work_started","submitted_to_qa","resubmitted","delivered"].includes(e.event_type));
+      const weekKey=value=>{
+        const d=new Date(String(value).slice(0,10)+"T12:00:00");
+        d.setDate(d.getDate()-((d.getDay()+6)%7));
+        return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+      };
+      const activeWeeks=new Set(productive.map(e=>weekKey(e.created_at)));
+      let consistency=null,weekCount=0;
+      if(productive.length){
+        const first=productive.map(e=>String(e.created_at).slice(0,10)).sort()[0];
+        const base=first>range.start?first:range.start;
+        weekCount=Math.max(1,Math.ceil((new Date(range.end+"T12:00:00")-new Date(base+"T12:00:00"))/604800000)+1);
+        consistency=Math.min(100,activeWeeks.size/weekCount*100);
+      }
+      return {editor,events,reviews:reviews.length,delivered:delivered.length,submitted:submitted.length,revisions:revisions.length,quality,onTimeScore,onTimeCount:onTime,dueCount:dueEvents.length,revisionScore,consistency,activeWeeks:activeWeeks.size,weekCount};
+    });
+    const maxDelivered=Math.max(0,...raw.map(x=>x.delivered));
+    const rows=raw.map(x=>{
+      const productivity=maxDelivered>0?x.delivered/maxDelivered*100:null;
+      const metrics=[[x.quality,35],[x.onTimeScore,25],[productivity,20],[x.revisionScore,10],[x.consistency,10]].filter(([value])=>value!==null&&Number.isFinite(value));
+      const coverage=metrics.reduce((sum,item)=>sum+item[1],0);
+      const overall=coverage>=50?metrics.reduce((sum,item)=>sum+item[0]*item[1],0)/coverage:null;
+      return {...x,productivity,coverage,overall};
+    }).sort((x,y)=>(y.overall??-1)-(x.overall??-1));
+    const evaluated=rows.filter(x=>x.overall!==null);
+    const average=evaluated.length?evaluated.reduce((sum,x)=>sum+x.overall,0)/evaluated.length:null;
+    const totalDelivered=rows.reduce((sum,x)=>sum+x.delivered,0);
+    const onTimeTotal=rows.reduce((sum,x)=>sum+x.onTimeCount,0);
+    const dueTotal=rows.reduce((sum,x)=>sum+x.dueCount,0);
+    const metricCell=(value,detail="")=>'<span class="performance-metric">'+(value===null?"—":Math.round(value)+"/100")+'</span>'+(detail?'<small class="performance-detail">'+safe(detail)+'</small>':"");
+    $("#performance-summary").innerHTML=[
+      ["Editors assessed",evaluated.length+" / "+editorsList.length],
+      ["Average score",average===null?"—":Math.round(average)+"/100"],
+      ["Projects delivered",String(totalDelivered)],
+      ["On-time delivery",dueTotal?Math.round(onTimeTotal/dueTotal*100)+"%": "—"]
+    ].map(([label,value])=>'<article class="stat-card"><span>'+safe(label)+'</span><strong>'+safe(value)+'</strong></article>').join("");
+    $("#performance-note").textContent="Balanced score: quality 35%, on-time delivery 25%, productivity 20%, revision avoidance 10%, consistency 10%. Missing metrics are excluded and the remaining weights are normalized; an overall score is shown only when at least 50% of the score weight has usable data. Productivity is relative to the highest editor delivery count in this period. Consistency uses recorded active weeks from the first observed production event. Tracking starts from the migration date; earlier activity is not reconstructed.";
+    host.innerHTML=rows.map(x=>{
+      const canOpenHistory=team.some(m=>m.id===x.editor.id);
+      const name=(canOpenHistory?'<button class="team-name-link performance-editor-link" data-id="'+x.editor.id+'" type="button">'+safe(x.editor.full_name||"Unnamed editor")+'</button>':'<strong>'+safe(x.editor.full_name||"Former editor")+'</strong>')+(x.editor.is_active===false?'<small class="performance-detail">Disabled or former account</small>':"");
+      const overall=x.overall===null?"—":Math.round(x.overall)+"/100";
+      const coverage=x.coverage>=50?'<small class="performance-detail">'+x.coverage+'% weight coverage</small>':'<small class="performance-detail">'+(x.coverage?"Insufficient data ("+x.coverage+"% coverage)":"No recorded data")+'</small>';
+      return '<tr><td>'+name+'</td><td><strong>'+overall+'</strong>'+coverage+'</td><td>'+metricCell(x.quality,x.quality===null?"No reviews": "Average of "+x.reviews+" reviews")+'</td><td>'+metricCell(x.onTimeScore,x.dueCount?x.onTimeCount+" of "+x.dueCount+" due-dated deliveries on time":"No due-dated deliveries")+'</td><td>'+metricCell(x.productivity,x.delivered+" delivered; relative to team leader")+'</td><td>'+metricCell(x.revisionScore,x.submitted?x.revisions+" revision requests / "+x.submitted+" submissions":"No submissions recorded")+'</td><td>'+metricCell(x.consistency,x.consistency===null?"No production events":x.activeWeeks+" active weeks / "+x.weekCount+" weeks")+'</td><td>'+x.delivered+'</td></tr>';
+    }).join("")||'<tr><td colspan="8" class="empty">No editor accounts are available.</td></tr>';
+    $$(".performance-editor-link").forEach(button=>button.addEventListener("click",()=>openTeamHistory(button.dataset.id)));
+  }
+  ["performance-period","performance-start","performance-end"].forEach(id=>$("#"+id)?.addEventListener("change",renderEditorPerformance));
+  $("#performance-refresh")?.addEventListener("click",()=>refresh());
+
+
+  function editorPerformanceDateRange(){
+    const today=new Date(),iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    const period=$("#editor-performance-period")?.value||"30",end=$("#editor-performance-end")?.value||iso(today);
+    let start;
+    if(period==="custom"){
+      start=$("#editor-performance-start")?.value||iso(new Date(today.getFullYear(),today.getMonth(),1));
+      if($("#editor-performance-start")&&!$("#editor-performance-start").value)$("#editor-performance-start").value=start;
+      if($("#editor-performance-end")&&!$("#editor-performance-end").value)$("#editor-performance-end").value=end;
+    }else if(period==="month")start=iso(new Date(today.getFullYear(),today.getMonth(),1));
+    else{const d=new Date(today.getFullYear(),today.getMonth(),today.getDate());d.setDate(d.getDate()-(period==="90"?89:29));start=iso(d);}
+    return {start,end,valid:start<=end};
+  }
+  function renderEditorPersonalPerformance(){
+    if(role()!=="editor")return;
+    const range=editorPerformanceDateRange(),summary=$("#editor-performance-summary"),activity=$("#editor-performance-activity"),reviewsHost=$("#editor-performance-reviews");
+    $("#editor-performance-date-controls").classList.toggle("hidden",$("#editor-performance-period").value!=="custom");
+    $("#editor-performance-period-label").textContent=range.start+" to "+range.end;
+    if(!range.valid){summary.innerHTML="";activity.innerHTML='<tr><td colspan="4" class="empty">The start date must be on or before the end date.</td></tr>';return;}
+    if(performanceEventsError){
+      summary.innerHTML="";activity.innerHTML='<tr><td colspan="4" class="empty">Your production tracking could not be loaded. Please contact an administrator.</td></tr>';
+      $("#editor-performance-note").textContent="Performance tracking is temporarily unavailable.";
+      return;
+    }
+    const inRange=value=>{const d=String(value||"").slice(0,10);return d>=range.start&&d<=range.end;};
+    const events=performanceEvents.filter(e=>e.editor_id===user.id&&inRange(e.created_at));
+    const reviews=qualityReviews.filter(r=>r.editor_id===user.id&&inRange(r.created_at));
+    const deliveredEvents=events.filter(e=>e.event_type==="delivered"),deliveredMap=new Map();
+    deliveredEvents.forEach(e=>{if(!deliveredMap.has(e.project_id))deliveredMap.set(e.project_id,e);});
+    const delivered=[...deliveredMap.values()],due=delivered.filter(e=>e.details&&e.details.due_date);
+    const onTime=due.filter(e=>String(e.created_at).slice(0,10)<=String(e.details.due_date).slice(0,10)).length;
+    const onTimeScore=due.length?onTime/due.length*100:null;
+    const submitted=events.filter(e=>["submitted_to_qa","resubmitted"].includes(e.event_type));
+    const revisions=events.filter(e=>e.event_type==="revision_requested");
+    const revisionScore=submitted.length?Math.max(0,100-revisions.length/submitted.length*100):null;
+    const quality=reviews.length?reviews.reduce((sum,r)=>sum+Number(r.quality_score||0),0)/reviews.length:null;
+    const productive=events.filter(e=>["work_started","submitted_to_qa","resubmitted","delivered"].includes(e.event_type));
+    const weekKey=value=>{const d=new Date(String(value).slice(0,10)+"T12:00:00");d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+    const activeWeeks=new Set(productive.map(e=>weekKey(e.created_at)));
+    let consistency=null,weekCount=0;
+    if(productive.length){const first=productive.map(e=>String(e.created_at).slice(0,10)).sort()[0],base=first>range.start?first:range.start;weekCount=Math.max(1,Math.ceil((new Date(range.end+"T12:00:00")-new Date(base+"T12:00:00"))/604800000)+1);consistency=Math.min(100,activeWeeks.size/weekCount*100);}
+    const metrics=[[quality,35],[onTimeScore,25],[revisionScore,10],[consistency,10]].filter(([v])=>v!==null&&Number.isFinite(v));
+    const coverage=metrics.reduce((sum,m)=>sum+m[1],0),overall=coverage>=50?metrics.reduce((sum,m)=>sum+m[0]*m[1],0)/coverage:null;
+    const cards=[
+      ["Overall score",overall===null?"—":Math.round(overall)+"/100"],
+      ["Projects delivered",String(delivered.length)],
+      ["On-time delivery",due.length?Math.round(onTime/due.length*100)+"%":"—"],
+      ["Average quality",quality===null?"—":Math.round(quality)+"/100"]
+    ];
+    summary.innerHTML=cards.map(([label,value])=>'<article class="stat-card"><span>'+safe(label)+'</span><strong>'+safe(value)+'</strong></article>').join("");
+    $("#editor-performance-note").textContent="Your score uses quality (35%), on-time delivery (25%), revision avoidance (10%) and consistency (10%). Missing measures are excluded and the remaining weights are normalized. Team-relative productivity is not shown here; your delivered project count is shown instead. Score coverage: "+coverage+"% of the full score. Tracking starts from the migration date.";
+    const eventLabels={editor_assigned:"Assigned",work_started:"Work started",submitted_to_qa:"Submitted to QA",revision_requested:"Revision requested",resubmitted:"Resubmitted",qa_passed:"QA passed",delivered:"Delivered"};
+    const projectName=id=>{const p=projects.find(x=>x.id===id);return p?(p.project_code||p.name||"Project"):"Project record";};
+    activity.innerHTML=events.slice().sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,100).map(e=>'<tr><td>'+safe(new Date(e.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}))+'</td><td>'+safe(projectName(e.project_id))+'</td><td>'+safe(eventLabels[e.event_type]||e.event_type)+'</td><td>'+safe(e.details?.status||"Production update")+'</td></tr>').join("")||'<tr><td colspan="4" class="empty">No production activity recorded in this period yet.</td></tr>';
+    reviewsHost.innerHTML=reviews.slice(0,20).map(r=>{const p=projects.find(x=>x.id===r.project_id);return '<article class="editor-feedback-item"><div><strong>'+safe(p?(p.project_code||p.name):"Project")+'</strong><span class="editor-score">'+safe(r.quality_score)+'/100</span></div><p>'+safe(r.feedback)+'</p><small>'+safe(new Date(r.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"}))+'</small></article>';}).join("")||'<p class="empty">No quality reviews in this period yet.</p>';
+  }
+  ["editor-performance-period","editor-performance-start","editor-performance-end"].forEach(id=>$("#"+id)?.addEventListener("change",renderEditorPersonalPerformance));
+  $("#editor-performance-refresh")?.addEventListener("click",()=>refresh());
+
   function editorReportRows(){
     const header=["Project reference","Project name","Client","Service","Quantity","Due date","Status","QA status","Quality score","Feedback"];
     return [header,...projects.map(p=>{const r=qualityReviews.find(x=>x.project_id===p.id);return [p.project_code||"",p.name||"",p.clients&&p.clients.name||"",p.service||"",p.quantity||"",p.due_date||"",p.status||"",p.qa_status||"",r?r.quality_score:"",r?r.feedback:""];})];
@@ -923,6 +1090,8 @@
   }
   $("#messages-refresh").addEventListener("click",refreshMessageInbox);
   function setView(view){
+    if(view==="performance"&&!isAdmin())return;
+    if(view==="editor-performance"&&role()!=="editor")return;
     if(view==="reports"&&!["admin","client"].includes(role()))return;
     if(view==="finance"&&!["admin","client"].includes(role()))return;
     $$(".view").forEach(el=>el.classList.add("hidden"));$("#"+view+"-view").classList.remove("hidden");
@@ -930,6 +1099,8 @@
     $("#page-title").textContent=view==="team"?"Team directory":view.charAt(0).toUpperCase()+view.slice(1);
     if(view==="inbox")refreshMessageInbox();
     if(view==="reports"){renderReportWorkspace();loadReportArchives();}
+    if(view==="performance")renderEditorPerformance();
+    if(view==="editor-performance")renderEditorPersonalPerformance();
   }
   $$(".nav-item").forEach(b=>b.addEventListener("click",()=>{setView(b.dataset.view);if(b.dataset.view==="finance")renderFinance();}));
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
