@@ -498,6 +498,7 @@
   function showTeamProject(projectId){const p=projects.find(x=>x.id===projectId);if(!p)return;$("#team-project-title").textContent=(p.project_code||"Project")+" · "+p.name;const fields=[["Client",p.clients?.name||"—"],["Service",p.service],["Quantity",p.quantity],["Due date",date(p.due_date)],["Status",p.status],["Quality check",p.qa_status||"Not started"],["Brief",p.brief||"—"],["Project folder / delivery link",p.folder_url||"—"]];$("#team-project-details").innerHTML=fields.map(([label,value])=>`<div><small>${safe(label)}</small><strong>${safe(value)}</strong></div>`).join("");$("#team-project-modal").classList.remove("hidden");}
   let projectStatusFilter="all";
   function renderProjects(){
+  $("#client-search").addEventListener("input",renderClients);
     const term=($("#project-search")?.value||"").toLowerCase();
     const clientView=role()==="client";
     const today=new Date().toISOString().slice(0,10); const matchesTerm=p=>(p.name+" "+p.project_code+" "+p.service+" "+(p.clients?.name||"")).toLowerCase().includes(term); const rows=projects.filter(p=>matchesTerm(p)&&(projectStatusFilter==="all"||(projectStatusFilter==="overdue"?!!p.due_date&&p.due_date<today&&!["Delivered","Cancelled"].includes(p.status):projectStatusFilter==="revisions"?(p.status==="Revisions"||p.qa_status==="Changes required"):projectStatusFilter==="active"?["Awaiting files","In progress","Revisions"].includes(p.status):projectStatusFilter==="qa"?p.status==="In QA":p.status==="Delivered")));
@@ -848,8 +849,22 @@
     else{form.reset();form.elements.quantity.value=1;$("#client-request-message").textContent="Your request has been sent to FrameCrest for review.";toast("Project request submitted.");await refreshProjectRequests();}
     submit.disabled=false;submit.textContent="Submit project request";
   });
+  function openClientDetails(clientId){
+    const client=clients.find(c=>c.id===clientId);if(!client)return;
+    const rows=projects.filter(p=>p.client_id===clientId);
+    const quote=rows.reduce((sum,p)=>sum+Number((finances.find(f=>f.project_id===p.id)||{}).quote_usd||0),0);
+    const paid=rows.reduce((sum,p)=>sum+Number((finances.find(f=>f.project_id===p.id)||{}).paid_usd||0),0);
+    $("#client-profile-title").textContent=client.name;
+    $("#client-profile-subtitle").textContent=[client.contact_name,client.email,client.phone,client.location].filter(Boolean).join(" · ")||"Client account";
+    $("#client-profile-stats").innerHTML=[["Projects",String(rows.length)],["Quoted value",money(quote)],["Paid",money(paid)],["Outstanding",money(Math.max(0,quote-paid))]].map(([label,value])=>'<article class="stat-card"><span>'+safe(label)+'</span><strong>'+safe(value)+'</strong></article>').join("");
+    $("#client-profile-projects").innerHTML=rows.length?'<div class="table-wrap"><table><thead><tr><th>PROJECT</th><th>SERVICE</th><th>DUE DATE</th><th>STATUS</th><th>QUOTE</th><th>PAID</th></tr></thead><tbody>'+rows.map(p=>{const f=finances.find(x=>x.project_id===p.id)||{};return '<tr><td><strong>'+safe(p.project_code||"—")+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.service||"—")+'</td><td>'+safe(p.due_date||"—")+'</td><td>'+safe(p.status||"—")+'</td><td>'+money(f.quote_usd||0)+'</td><td>'+money(f.paid_usd||0)+'</td></tr>';}).join("")+'</tbody></table></div>':'<p class="empty">No projects have been created for this client yet.</p>';
+    $("#client-profile-modal").classList.remove("hidden");
+  }
   function renderClients(){
-    $("#clients-table").innerHTML=clients.map(c=>'<tr><td><strong>'+safe(c.name)+'</strong></td><td>'+safe(c.contact_name||"—")+'</td><td>'+safe(c.email||"—")+'</td><td>'+safe(c.location||"—")+'</td><td>'+projects.filter(p=>p.client_id===c.id).length+'</td><td><button class="btn secondary client-edit" data-id="'+c.id+'" type="button">Edit</button> <button class="btn secondary client-delete" data-id="'+c.id+'" type="button">Delete</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No clients added yet.</td></tr>';
+    const term=($("#client-search")?.value||"").trim().toLowerCase();
+    const filtered=clients.filter(c=>[c.name,c.contact_name,c.email,c.location].some(v=>String(v||"").toLowerCase().includes(term)));
+    $("#clients-table").innerHTML=filtered.map(c=>'<tr><td><strong>'+safe(c.name)+'</strong></td><td>'+safe(c.contact_name||"—")+'</td><td>'+safe(c.email||"—")+'</td><td>'+safe(c.location||"—")+'</td><td>'+projects.filter(p=>p.client_id===c.id).length+'</td><td><button class="btn secondary client-view" data-id="'+c.id+'" type="button">View</button> <button class="btn secondary client-edit" data-id="'+c.id+'" type="button">Edit</button> <button class="btn secondary client-delete" data-id="'+c.id+'" type="button">Delete</button></td></tr>').join("")||(term?'<tr><td colspan="6" class="empty">No clients match your search.</td></tr>':'<tr><td colspan="6" class="empty">No clients added yet.</td></tr>');
+    $$(".client-view").forEach(btn=>btn.addEventListener("click",()=>openClientDetails(btn.dataset.id)));
     $$(".client-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const c=clients.find(x=>x.id===btn.dataset.id);if(!c)return;
       const f=$("#client-form");f.dataset.editId=c.id;
@@ -858,107 +873,18 @@
       $("#client-message").textContent="";$("#client-modal").classList.remove("hidden");
     }));
     $$(".client-delete").forEach(btn=>btn.addEventListener("click",async()=>{
-      const client=clients.find(c=>c.id===btn.dataset.id);
-      if(!client) return;
-      if(!window.confirm('Delete "'+client.name+'"? This cannot be undone.')) return;
+      const client=clients.find(c=>c.id===btn.dataset.id);if(!client)return;
+      if(!window.confirm('Delete "'+client.name+'"? This cannot be undone.'))return;
       btn.disabled=true;
       try{
         const {count,error:countError}=await db.from("projects").select("id",{count:"exact",head:true}).eq("client_id",client.id);
-        if(countError) throw countError;
+        if(countError)throw countError;
         if((count||0)>0){toast("This client has existing projects. Reassign or remove those projects before deleting the client.");btn.disabled=false;return;}
-        const {error}=await db.from("clients").delete().eq("id",client.id);
-        if(error) throw error;
-        clients=clients.filter(c=>c.id!==client.id);
-        renderClients();fillSelects();toast("Client deleted.");
-      }catch(error){
-        toast("Could not delete client: "+(error.message||"Please try again."));
-        console.error("FrameCrest client delete:",error);
-        btn.disabled=false;
-      }
+        const {error}=await db.from("clients").delete().eq("id",client.id);if(error)throw error;
+        clients=clients.filter(c=>c.id!==client.id);renderClients();fillSelects();toast("Client deleted.");
+      }catch(error){toast("Could not delete client: "+(error.message||"Please try again."));console.error("FrameCrest client delete:",error);btn.disabled=false;}
     }));
   }
-  function fillSelects(){
-    $("#project-client").innerHTML='<option value="">Select a client</option>'+clients.map(c=>'<option value="'+c.id+'">'+safe(c.name)+'</option>').join("");
-    $("#project-editor").innerHTML='<option value="">Unassigned</option>'+editors.map(e=>'<option value="'+e.id+'">'+safe(e.full_name||"Unnamed editor")+'</option>').join("");
-    $("#project-qa").innerHTML='<option value="">Unassigned</option>'+qaReviewers.map(e=>'<option value="'+e.id+'">'+safe(e.full_name||"Unnamed QA reviewer")+'</option>').join("");
-  }
-  async function refreshMessageInbox(){
-    if(role()==="editor"){inboxRows=[];return;}
-    const ids=projects.map(p=>p.id);
-    if(!ids.length){inboxRows=[];renderMessageInbox();return;}
-    const results=await Promise.all([
-      db.from("project_messages").select("id,project_id,message,sender_id,created_at").in("project_id",ids).order("created_at",{ascending:false}),
-      db.from("project_message_reads").select("project_id,last_read_at").eq("user_id",user.id).in("project_id",ids)
-    ]);
-    const mr=results[0],rr=results[1];
-    if(mr.error){console.error(mr.error);toast("Could not load messages: "+mr.error.message);return;}
-    if(rr.error){console.error(rr.error);toast("Could not load read status: "+rr.error.message);return;}
-    const reads=new Map((rr.data||[]).map(x=>[x.project_id,new Date(x.last_read_at).getTime()]));
-    const latest=new Map();(mr.data||[]).forEach(m=>{if(!latest.has(m.project_id))latest.set(m.project_id,m);});
-    inboxRows=projects.filter(p=>latest.has(p.id)).map(p=>{const last=latest.get(p.id),readAt=reads.get(p.id)||0;const unread=(mr.data||[]).filter(m=>m.project_id===p.id&&new Date(m.created_at).getTime()>readAt&&m.sender_id!==user.id).length;return {project:p,last,unread};}).sort((x,y)=>new Date(y.last.created_at)-new Date(x.last.created_at));
-    renderMessageInbox();
-  }
-  function renderMessageInbox(){
-    const count=inboxRows.reduce((n,x)=>n+x.unread,0);$("#messages-unread-count").textContent=count>99?"99+":count;$("#messages-unread-count").classList.toggle("hidden",count===0);
-    $("#messages-inbox-table").innerHTML=inboxRows.map(x=>'<tr><td><strong>'+safe(x.project.project_code)+' · '+safe(x.project.name)+'</strong></td><td>'+safe(x.project.clients?.name||"—")+'</td><td class="'+(x.unread?"inbox-unread":"")+'">'+safe(x.last.message.length>100?x.last.message.slice(0,100)+"…":x.last.message)+'</td><td>'+new Date(x.last.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</td><td>'+(x.unread?'<span class="status in-progress">'+x.unread+' new</span>':"—")+'</td><td><button class="btn secondary inbox-open" data-id="'+x.project.id+'" type="button">Open</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No conversations yet. Messages will appear here when someone starts a project conversation.</td></tr>';
-    $$(".inbox-open").forEach(b=>b.addEventListener("click",()=>openProjectMessages(b.dataset.id)));
-  }
-  $("#messages-refresh").addEventListener("click",refreshMessageInbox);
-  function setView(view){
-    if(view==="reports"&&!["admin","client"].includes(role()))return;
-    if(view==="finance"&&!["admin","client"].includes(role()))return;
-    $$(".view").forEach(el=>el.classList.add("hidden"));$("#"+view+"-view").classList.remove("hidden");
-    $$(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
-    $("#page-title").textContent=view==="team"?"Team directory":view.charAt(0).toUpperCase()+view.slice(1);
-    if(view==="inbox")refreshMessageInbox();
-    if(view==="reports"){renderReportWorkspace();loadReportArchives();}
-  }
-  $$(".nav-item").forEach(b=>b.addEventListener("click",()=>{setView(b.dataset.view);if(b.dataset.view==="finance")renderFinance();}));
-  $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
-  $("#project-search").addEventListener("input",renderProjects);
-  function resetProjectForm(){
-    const form=$("#project-form");form.reset();delete form.dataset.editId;delete form.dataset.requestId;
-    $("#project-modal h2").textContent="Create a project";
-    $("#project-modal .eyebrow").textContent="PROJECT INTAKE";
-    form.querySelector('button[type="submit"]').textContent="Create project";
-    $("#project-message").textContent="";
-  }
-  $("#new-project-open").addEventListener("click",()=>{resetProjectForm();$("#project-modal").classList.remove("hidden");});
-  function resetClientForm(){
-    const form=$("#client-form");
-    form.reset();delete form.dataset.editId;
-    $("#client-modal h2").textContent="Add a client";
-    form.querySelector('button[type="submit"]').textContent="Save client";
-    $("#client-message").textContent="";
-  }
-  $("#new-client-open").addEventListener("click",()=>{resetClientForm();$("#client-modal").classList.remove("hidden");});
-  $("#new-team-open").addEventListener("click",()=>{$("#team-invite-form").reset();$("#team-invite-message").textContent="";$("#team-invite-modal").classList.remove("hidden");});
-  $("#team-invite-form").addEventListener("submit",async e=>{
-    e.preventDefault();
-    if(!isAdmin())return;
-    const form=e.currentTarget,submit=form.querySelector('button[type="submit"]');
-    const payload={full_name:form.full_name.value.trim(),email:form.email.value.trim(),role:form.role.value};
-    submit.disabled=true;submit.textContent="Sending invitation…";
-    $("#team-invite-message").textContent="Creating a separate staff account…";
-    try{
-      const {data,error}=await db.functions.invoke("invite-team-member",{body:payload});
-      if(error)throw error;
-      if(data?.error)throw new Error(data.error);
-      $("#team-invite-message").textContent="Invitation sent to "+payload.email+".";
-      toast("Team invitation sent.");
-      form.reset();await refresh();
-      setTimeout(()=>$("#team-invite-modal").classList.add("hidden"),1200);
-    }catch(err){
-      $("#team-invite-message").textContent=err.message||"Could not send the invitation.";
-      console.error("FrameCrest team invitation:",err);
-    }finally{submit.disabled=false;submit.textContent="Send invitation";}
-  });
-
-  $$("[data-close]").forEach(b=>b.addEventListener("click",()=>{
-    if(b.dataset.close==="client-modal") resetClientForm();
-    if(b.dataset.close==="project-modal") resetProjectForm();
-    $("#"+b.dataset.close).classList.add("hidden");
-  }));
   $("#client-form").addEventListener("submit",async e=>{
     e.preventDefault();const form=e.currentTarget,submit=form.querySelector('button[type="submit"]');if(submit.disabled)return;
     const raw=Object.fromEntries(new FormData(form).entries()),obj={name:String(raw.name||"").trim()};
