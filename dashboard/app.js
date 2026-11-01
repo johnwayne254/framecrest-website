@@ -346,8 +346,8 @@
     const firstName=(p.full_name||user.email||"").trim().split(" ")[0].split("@")[0]||"there"; const hour=new Date().getHours(); const greeting=hour<12?"Good morning":hour<17?"Good afternoon":"Good evening"; $("#welcome-title").textContent=greeting+", "+firstName+".";
     $("#welcome-subtitle").textContent=p.role==="client"?"A clear view of your projects, progress and anything that needs your attention.":p.role==="editor"?"Your assigned projects, production briefs and delivery deadlines.":"Here is what's happening across your workspace.";
     $("#today-label").textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
-    $$$(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
-    $$$(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
+    $(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
+    $(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
     const reportsNav=$("#reports-nav");if(reportsNav)reportsNav.classList.toggle("hidden",!["admin","client"].includes(role()));const monthlySummaryButton=$("#generate-monthly-summary");if(monthlySummaryButton)monthlySummaryButton.classList.toggle("hidden",!isAdmin());
     $("#clients-view").classList.toggle("hidden",!isAdmin());
     $$(".editor-only").forEach(el=>el.classList.toggle("hidden",role()!=="editor"));
@@ -462,12 +462,12 @@
   function renderTeam(){
     const counts={};projects.forEach(p=>{if(p.editor_id)counts[p.editor_id]=(counts[p.editor_id]||0)+1;if(p.qa_id)counts[p.qa_id]=(counts[p.qa_id]||0)+1;});
     $("#team-table").innerHTML=team.map(m=>`<tr><td><button class="team-name-link" data-history-id="${m.id}" type="button">${safe(m.full_name||"Unnamed team member")}</button></td><td><select class="inline-select team-role" data-id="${m.id}">${["editor","qa"].map(r=>`<option value="${r}" ${m.role===r?"selected":""}>${r==="qa"?"QA":"Editor"}</option>`).join("")}</select></td><td><button class="text-button team-current-work" data-id="${m.id}" type="button">${counts[m.id]||0} · View projects</button></td><td><span class="status ${m.is_active===false?"cancelled":"delivered"}">${m.is_active===false?"Disabled":"Active"}</span></td><td><button class="btn secondary team-edit" data-id="${m.id}" type="button">Edit details</button> <button class="btn secondary team-save" data-id="${m.id}" type="button">Save role</button> <button class="btn secondary team-toggle" data-id="${m.id}" data-active="${m.is_active===false?"false":"true"}" type="button">${m.is_active===false?"Enable":"Disable"}</button> <button class="btn secondary team-delete" data-id="${m.id}" type="button">Delete</button></td></tr>`).join("")||'<tr><td colspan="5" class="empty">No team accounts found.</td></tr>';
-    $$$(".team-name-link").forEach(btn=>btn.addEventListener("click",()=>openTeamHistory(btn.dataset.historyId)));
-    $$$(".team-current-work").forEach(btn=>btn.addEventListener("click",()=>openTeamHistory(btn.dataset.id,"all","assigned")));
-    $$$(".team-edit").forEach(btn=>btn.addEventListener("click",()=>{const m=team.find(x=>x.id===btn.dataset.id);if(!m)return;const f=$("#team-edit-form");f.elements.id.value=m.id;f.elements.full_name.value=m.full_name||"";f.elements.role.value=m.role;$("#team-edit-message").textContent="";$("#team-edit-modal").classList.remove("hidden");}));
-    $$$(".team-save").forEach(btn=>btn.addEventListener("click",async()=>{const select=$(`.team-role[data-id="${btn.dataset.id}"]`);btn.disabled=true;const {error}=await db.from("profiles").update({role:select.value}).eq("id",btn.dataset.id).eq("account_type","staff");btn.disabled=false;if(error){toast("Could not update role: "+error.message);return;}toast("Team role updated.");await refresh();}));
-    $$$(".team-toggle").forEach(btn=>btn.addEventListener("click",async()=>{const member=team.find(x=>x.id===btn.dataset.id);if(!member)return;const disabling=btn.dataset.active==="true",action=disabling?"disable":"enable";if(!window.confirm((disabling?"Disable":"Enable")+" "+(member.full_name||"this team member")+"?"))return;btn.disabled=true;try{const {data,error}=await db.functions.invoke("manage-team-account",{body:{user_id:member.id,action}});if(error)throw error;if(data?.error)throw new Error(data.error);toast(disabling?"Staff account disabled.":"Staff account enabled.");await refresh();}catch(err){toast("Could not "+action+" account: "+(err.message||"Please try again."));}finally{btn.disabled=false;}}));
-    $$$(".team-delete").forEach(btn=>btn.addEventListener("click",async()=>{const member=team.find(x=>x.id===btn.dataset.id);if(!member)return;const assigned=counts[member.id]||0;const warning="Permanently delete "+(member.full_name||"this team member")+"? This removes their login and profile. "+(assigned?assigned+" assigned project(s) will become unassigned. ":"")+"This cannot be undone.";if(!window.confirm(warning))return;btn.disabled=true;try{const {data,error}=await db.functions.invoke("manage-team-account",{body:{user_id:member.id,action:"delete"}});if(error)throw error;if(data?.error)throw new Error(data.error);toast("Staff account deleted.");await refresh();}catch(err){toast("Could not delete account: "+(err.message||"Please try again."));}finally{btn.disabled=false;}}));
+    $(".team-name-link").forEach(btn=>btn.addEventListener("click",()=>openTeamHistory(btn.dataset.historyId)));
+    $(".team-current-work").forEach(btn=>btn.addEventListener("click",()=>openTeamHistory(btn.dataset.id,"all","assigned")));
+    $(".team-edit").forEach(btn=>btn.addEventListener("click",()=>{const m=team.find(x=>x.id===btn.dataset.id);if(!m)return;const f=$("#team-edit-form");f.elements.id.value=m.id;f.elements.full_name.value=m.full_name||"";f.elements.role.value=m.role;$("#team-edit-message").textContent="";$("#team-edit-modal").classList.remove("hidden");}));
+    $(".team-save").forEach(btn=>btn.addEventListener("click",async()=>{const select=$(`.team-role[data-id="${btn.dataset.id}"]`);btn.disabled=true;const {error}=await db.from("profiles").update({role:select.value}).eq("id",btn.dataset.id).eq("account_type","staff");btn.disabled=false;if(error){toast("Could not update role: "+error.message);return;}toast("Team role updated.");await refresh();}));
+    $(".team-toggle").forEach(btn=>btn.addEventListener("click",async()=>{const member=team.find(x=>x.id===btn.dataset.id);if(!member)return;const disabling=btn.dataset.active==="true",action=disabling?"disable":"enable";if(!window.confirm((disabling?"Disable":"Enable")+" "+(member.full_name||"this team member")+"?"))return;btn.disabled=true;try{const {data,error}=await db.functions.invoke("manage-team-account",{body:{user_id:member.id,action}});if(error)throw error;if(data?.error)throw new Error(data.error);toast(disabling?"Staff account disabled.":"Staff account enabled.");await refresh();}catch(err){toast("Could not "+action+" account: "+(err.message||"Please try again."));}finally{btn.disabled=false;}}));
+    $(".team-delete").forEach(btn=>btn.addEventListener("click",async()=>{const member=team.find(x=>x.id===btn.dataset.id);if(!member)return;const assigned=counts[member.id]||0;const warning="Permanently delete "+(member.full_name||"this team member")+"? This removes their login and profile. "+(assigned?assigned+" assigned project(s) will become unassigned. ":"")+"This cannot be undone.";if(!window.confirm(warning))return;btn.disabled=true;try{const {data,error}=await db.functions.invoke("manage-team-account",{body:{user_id:member.id,action:"delete"}});if(error)throw error;if(data?.error)throw new Error(data.error);toast("Staff account deleted.");await refresh();}catch(err){toast("Could not delete account: "+(err.message||"Please try again."));}finally{btn.disabled=false;}}));
   }
   $("#team-edit-form").addEventListener("submit",async e=>{e.preventDefault();if(!isAdmin())return;const f=e.currentTarget,button=f.querySelector('button[type="submit"]');button.disabled=true;try{const {error}=await db.from("profiles").update({full_name:f.elements.full_name.value.trim(),role:f.elements.role.value}).eq("id",f.elements.id.value).eq("account_type","staff");if(error)throw error;$("#team-edit-modal").classList.add("hidden");toast("Staff details updated.");await refresh();}catch(err){$("#team-edit-message").textContent=err.message||"Could not update staff details.";}finally{button.disabled=false;}});
   let teamHistoryMember=null,teamHistoryMode="activity",teamHistoryActivities=[];
@@ -492,7 +492,7 @@
     const activitiesHtml=activities.map(x=>`<div class="team-history-event"><span class="team-history-date">${safe(new Date(x.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"}))}</span><strong>${safe(x.projects?.project_code||"Project")} · ${safe(x.projects?.name||"")}</strong><p>${safe(x.message)}</p></div>`).join("");
     const projectHtml=projectList.map(p=>`<article class="team-history-project"><div><strong>${safe(p.project_code||"Project")} · ${safe(p.name)}</strong><p>${safe(p.service||"")} · Due ${date(p.due_date)} · ${safe(p.status||"")}</p></div><button class="btn secondary team-project-open" data-id="${p.id}" type="button">View details</button></article>`).join("");
     $("#team-history-results").innerHTML=`<div class="team-history-summary"><strong>${projectList.length}</strong> ${teamHistoryMode==="assigned"?"currently assigned projects":"projects with recorded activity"} <span>${activities.length} recorded actions</span></div>${projectHtml||'<p class="empty">No matching projects found for this period.</p>'}${teamHistoryMode==="activity"?'<h3>Recorded work activity</h3>'+(activitiesHtml||'<p class="empty">No recorded actions for this period.</p>'):""}`;
-    $$$(".team-project-open").forEach(btn=>btn.addEventListener("click",()=>showTeamProject(btn.dataset.id)));
+    $(".team-project-open").forEach(btn=>btn.addEventListener("click",()=>showTeamProject(btn.dataset.id)));
   }
   ["team-history-period","team-history-day","team-history-month","team-history-year"].forEach(id=>$("#"+id).addEventListener("change",renderTeamHistory));
   function showTeamProject(projectId){const p=projects.find(x=>x.id===projectId);if(!p)return;$("#team-project-title").textContent=(p.project_code||"Project")+" · "+p.name;const fields=[["Client",p.clients?.name||"—"],["Service",p.service],["Quantity",p.quantity],["Due date",date(p.due_date)],["Status",p.status],["Quality check",p.qa_status||"Not started"],["Brief",p.brief||"—"],["Project folder / delivery link",p.folder_url||"—"]];$("#team-project-details").innerHTML=fields.map(([label,value])=>`<div><small>${safe(label)}</small><strong>${safe(value)}</strong></div>`).join("");$("#team-project-modal").classList.remove("hidden");}
@@ -522,12 +522,12 @@
       if(clientView)return '<tr>'+project+'<td>'+safe(p.service)+'</td><td>'+date(p.due_date)+'</td>'+status+qa+actions+'</tr>';
       return '<tr>'+project+'<td>'+safe(p.clients?.name||"—")+'</td><td>'+safe(p.service)+'</td><td>'+safe(p.profiles?.full_name||"Unassigned")+'</td><td>'+safe(p.qa_profile?.full_name||"Unassigned")+'</td><td>'+date(p.due_date)+'</td><td>'+(isAdmin()||role()==="editor" ? '<select class="inline-select status-change" data-id="'+p.id+'">'+allowedStatuses.map(x=>'<option '+(x===p.status?'selected':'')+'>'+x+'</option>').join("")+'</select>' : status.slice(4,-5))+'</td><td>'+(isAdmin()||role()==="qa"?'<select class="inline-select qa-change" data-id="'+p.id+'">'+["Not started","Pending review","Passed","Changes required"].map(x=>'<option '+(x===p.qa_status?'selected':'')+'>'+x+'</option>').join("")+'</select>':qa.slice(4,-5))+'</td><td>'+(isAdmin()?'<button class="btn secondary project-edit" data-id="'+p.id+'" type="button">Edit</button> ':'')+'<button class="btn secondary project-details" data-id="'+p.id+'" type="button">Details</button> <button class="btn secondary project-activity" data-id="'+p.id+'" type="button">Activity</button></td></tr>';
     }).join("")||'<tr><td colspan="'+(clientView?6:9)+'" class="empty">No matching projects.</td></tr>';
-    $$$(".status-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("Project status updated.");await refresh();}}));
-    $$$(".qa-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({qa_status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("QA status updated.");await refresh();}}));
+    $(".status-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("Project status updated.");await refresh();}}));
+    $(".qa-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({qa_status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("QA status updated.");await refresh();}}));
     $$(".project-review").forEach(btn=>btn.addEventListener("click",()=>openEditorReview(btn.dataset.id)));
     $$(".project-details").forEach(btn=>btn.addEventListener("click",()=>openProjectDetails(btn.dataset.id)));
-    $$$(".project-activity").forEach(btn=>btn.addEventListener("click",()=>openProjectActivity(btn.dataset.id)));
-    $$$(".project-edit").forEach(btn=>btn.addEventListener("click",()=>{
+    $(".project-activity").forEach(btn=>btn.addEventListener("click",()=>openProjectActivity(btn.dataset.id)));
+    $(".project-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const p=projects.find(x=>x.id===btn.dataset.id);if(!p)return;
       const form=$("#project-form");form.dataset.editId=p.id;
       ["name","client_id","service","quantity","due_date","editor_id","qa_id","brief","folder_url"].forEach(k=>{form.elements[k].value=p[k]??"";});
@@ -718,16 +718,16 @@
     $("#finance-table").innerHTML=rows.map(({p,f,balance})=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td>'+(clientView?'':'<td>'+safe(p.clients?.name||"—")+'</td>')+'<td>'+money(f.quote_usd)+'</td><td>'+money(f.paid_usd)+'</td><td><strong>'+money(balance)+'</strong></td><td>'+(clientView?'<button class="btn secondary payment-history" data-id="'+p.id+'" type="button">Payment history</button>':'<button class="btn secondary finance-edit" data-id="'+p.id+'" type="button">Quote</button> <button class="btn secondary payment-add" data-id="'+p.id+'" type="button">Add payment</button> <button class="btn secondary payment-history" data-id="'+p.id+'" type="button">History</button>')+'</td></tr>').join("")||'<tr><td colspan="6" class="empty">No projects to show.</td></tr>';
     const heads=clientView?["PROJECT","QUOTE (USD)","PAID (USD)","OUTSTANDING","PAYMENTS"]:["PROJECT","CLIENT","QUOTE (USD)","PAID (USD)","OUTSTANDING","ACTION"];
     $("#finance-table").closest("table").querySelector("thead").innerHTML="<tr>"+heads.map(x=>"<th>"+x+"</th>").join("")+"</tr>";
-    $$$(".finance-edit").forEach(btn=>btn.addEventListener("click",()=>{
+    $(".finance-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const f=finances.find(x=>x.project_id===btn.dataset.id)||{quote_usd:0};
       const form=$("#finance-form");form.project_id.value=btn.dataset.id;form.quote_usd.value=f.quote_usd||0;$("#finance-modal").classList.remove("hidden");
     }));
-    $$$(".payment-add").forEach(btn=>btn.addEventListener("click",()=>{
+    $(".payment-add").forEach(btn=>btn.addEventListener("click",()=>{
       const p=projects.find(x=>x.id===btn.dataset.id);if(!p)return;
       const form=$("#payment-form");form.reset();form.project_id.value=p.id;form.payment_date.value=new Date().toISOString().slice(0,10);
       $("#payment-title").textContent="Add payment · "+p.project_code;$("#payment-message").textContent="";$("#payment-modal").classList.remove("hidden");
     }));
-    $$$(".payment-history").forEach(btn=>btn.addEventListener("click",()=>openPaymentHistory(btn.dataset.id)));
+    $(".payment-history").forEach(btn=>btn.addEventListener("click",()=>openPaymentHistory(btn.dataset.id)));
     renderFinanceReport();renderInvoices();
   }
   function renderInvoices(){
@@ -737,9 +737,9 @@
       const overdue=inv.status==="Issued"&&inv.due_date<new Date().toISOString().slice(0,10);
       return '<tr><td><strong>'+safe(inv.invoice_number)+'</strong></td><td>'+safe(p?.project_code||"Project")+' · '+safe(p?.name||"")+'</td><td>'+date(inv.issue_date)+'</td><td>'+date(inv.due_date)+(overdue?' <span class="status changes-required">Overdue</span>':'')+'</td><td>'+money(inv.amount_usd)+'</td><td><span class="status '+(inv.status==="Paid"?"delivered":inv.status==="Void"?"cancelled":"in-progress")+'">'+safe(inv.status)+'</span></td><td><button class="btn secondary invoice-view" data-id="'+inv.id+'" type="button">View</button>'+(isAdmin()&&inv.status==="Issued"?' <button class="btn secondary invoice-paid" data-id="'+inv.id+'" type="button">Mark paid</button> <button class="btn secondary invoice-void" data-id="'+inv.id+'" type="button">Void</button>':'')+'</td></tr>';
     }).join("")||'<tr><td colspan="7" class="empty">No invoices have been issued yet.</td></tr>';
-    $$$(".invoice-view").forEach(b=>b.addEventListener("click",()=>previewInvoice(b.dataset.id)));
-    $$$(".invoice-paid").forEach(b=>b.addEventListener("click",()=>updateInvoiceStatus(b.dataset.id,"Paid")));
-    $$$(".invoice-void").forEach(b=>b.addEventListener("click",()=>updateInvoiceStatus(b.dataset.id,"Void")));
+    $(".invoice-view").forEach(b=>b.addEventListener("click",()=>previewInvoice(b.dataset.id)));
+    $(".invoice-paid").forEach(b=>b.addEventListener("click",()=>updateInvoiceStatus(b.dataset.id,"Paid")));
+    $(".invoice-void").forEach(b=>b.addEventListener("click",()=>updateInvoiceStatus(b.dataset.id,"Void")));
     const select=$("#invoice-project");select.innerHTML=projects.map(p=>'<option value="'+p.id+'">'+safe(p.project_code)+' · '+safe(p.name)+' — '+safe(p.clients?.name||"Client")+'</option>').join("");
   }
   async function updateInvoiceStatus(id,status){
@@ -821,9 +821,9 @@
     }
     if(isAdmin()){
       $("#requests-table").innerHTML=projectRequests.map(r=>'<tr><td>'+safe(r.clients?.name||"Client")+'</td><td><strong>'+safe(r.project_name)+'</strong><small class="subline">'+safe(r.property_address||"No property address")+'</small></td><td>'+safe(r.service)+'</td><td>'+r.quantity+'</td><td>'+date(r.preferred_due_date)+'</td><td><button class="btn secondary request-details" data-id="'+r.id+'" type="button">View brief</button></td><td><select class="inline-select request-status" data-id="'+r.id+'">'+["Submitted","Under review","Approved","Declined"].map(x=>'<option '+(x===r.status?'selected':'')+'>'+x+'</option>').join("")+'</select></td><td>'+(r.status==="Approved"?'<span class="muted">Project created</span>':r.status==="Declined"?'—':'<button class="btn primary request-create" data-id="'+r.id+'" type="button">Review & create</button>')+'</td></tr>').join("")||'<tr><td colspan="8" class="empty">No project requests received yet.</td></tr>';
-      $$$(".request-status").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("project_requests").update({status:el.value,reviewed_at:new Date().toISOString()}).eq("id",el.dataset.id);if(error){toast("Could not update request: "+error.message);return;}toast("Request status updated.");await refreshProjectRequests();}));
-      $$$(".request-details").forEach(btn=>btn.addEventListener("click",()=>{const r=projectRequests.find(x=>x.id===btn.dataset.id);if(!r)return;window.alert("Project: "+r.project_name+"\nClient: "+(r.clients?.name||"")+"\nService: "+r.service+"\nQuantity: "+r.quantity+"\nProperty: "+(r.property_address||"Not supplied")+"\nPreferred deadline: "+(r.preferred_due_date||"Not supplied")+"\n\nBrief:\n"+(r.brief||"No additional instructions."));}));
-      $$$(".request-create").forEach(btn=>btn.addEventListener("click",()=>{
+      $(".request-status").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("project_requests").update({status:el.value,reviewed_at:new Date().toISOString()}).eq("id",el.dataset.id);if(error){toast("Could not update request: "+error.message);return;}toast("Request status updated.");await refreshProjectRequests();}));
+      $(".request-details").forEach(btn=>btn.addEventListener("click",()=>{const r=projectRequests.find(x=>x.id===btn.dataset.id);if(!r)return;window.alert("Project: "+r.project_name+"\nClient: "+(r.clients?.name||"")+"\nService: "+r.service+"\nQuantity: "+r.quantity+"\nProperty: "+(r.property_address||"Not supplied")+"\nPreferred deadline: "+(r.preferred_due_date||"Not supplied")+"\n\nBrief:\n"+(r.brief||"No additional instructions."));}));
+      $(".request-create").forEach(btn=>btn.addEventListener("click",()=>{
         const r=projectRequests.find(x=>x.id===btn.dataset.id);if(!r)return;
         const form=$("#project-form");resetProjectForm();form.dataset.requestId=r.id;
         form.elements.name.value=r.project_name;form.elements.client_id.value=r.client_id;
@@ -849,14 +849,14 @@
   });
   function renderClients(){
     $("#clients-table").innerHTML=clients.map(c=>'<tr><td><strong>'+safe(c.name)+'</strong></td><td>'+safe(c.contact_name||"—")+'</td><td>'+safe(c.email||"—")+'</td><td>'+safe(c.location||"—")+'</td><td>'+projects.filter(p=>p.client_id===c.id).length+'</td><td><button class="btn secondary client-edit" data-id="'+c.id+'" type="button">Edit</button> <button class="btn secondary client-delete" data-id="'+c.id+'" type="button">Delete</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No clients added yet.</td></tr>';
-    $$$(".client-edit").forEach(btn=>btn.addEventListener("click",()=>{
+    $(".client-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const c=clients.find(x=>x.id===btn.dataset.id);if(!c)return;
       const f=$("#client-form");f.dataset.editId=c.id;
       ["name","contact_name","email","phone","location","website"].forEach(k=>f.elements[k].value=c[k]||"");
       $("#client-modal h2").textContent="Edit client";f.querySelector('button[type="submit"]').textContent="Save changes";
       $("#client-message").textContent="";$("#client-modal").classList.remove("hidden");
     }));
-    $$$(".client-delete").forEach(btn=>btn.addEventListener("click",async()=>{
+    $(".client-delete").forEach(btn=>btn.addEventListener("click",async()=>{
       const client=clients.find(c=>c.id===btn.dataset.id);
       if(!client) return;
       if(!window.confirm('Delete "'+client.name+'"? This cannot be undone.')) return;
@@ -900,20 +900,20 @@
   function renderMessageInbox(){
     const count=inboxRows.reduce((n,x)=>n+x.unread,0);$("#messages-unread-count").textContent=count>99?"99+":count;$("#messages-unread-count").classList.toggle("hidden",count===0);
     $("#messages-inbox-table").innerHTML=inboxRows.map(x=>'<tr><td><strong>'+safe(x.project.project_code)+' · '+safe(x.project.name)+'</strong></td><td>'+safe(x.project.clients?.name||"—")+'</td><td class="'+(x.unread?"inbox-unread":"")+'">'+safe(x.last.message.length>100?x.last.message.slice(0,100)+"…":x.last.message)+'</td><td>'+new Date(x.last.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</td><td>'+(x.unread?'<span class="status in-progress">'+x.unread+' new</span>':"—")+'</td><td><button class="btn secondary inbox-open" data-id="'+x.project.id+'" type="button">Open</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No conversations yet. Messages will appear here when someone starts a project conversation.</td></tr>';
-    $$$(".inbox-open").forEach(b=>b.addEventListener("click",()=>openProjectMessages(b.dataset.id)));
+    $(".inbox-open").forEach(b=>b.addEventListener("click",()=>openProjectMessages(b.dataset.id)));
   }
   $("#messages-refresh").addEventListener("click",refreshMessageInbox);
   function setView(view){
     if(view==="reports"&&!["admin","client"].includes(role()))return;
     if(view==="finance"&&!["admin","client"].includes(role()))return;
-    $$$(".view").forEach(el=>el.classList.add("hidden"));$("#"+view+"-view").classList.remove("hidden");
-    $$$(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
+    $(".view").forEach(el=>el.classList.add("hidden"));$("#"+view+"-view").classList.remove("hidden");
+    $(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
     $("#page-title").textContent=view==="team"?"Team directory":view.charAt(0).toUpperCase()+view.slice(1);
     if(view==="inbox")refreshMessageInbox();
     if(view==="reports"){renderReportWorkspace();loadReportArchives();}
   }
-  $$$(".nav-item").forEach(b=>b.addEventListener("click",()=>{setView(b.dataset.view);if(b.dataset.view==="finance")renderFinance();}));
-  $$$("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
+  $(".nav-item").forEach(b=>b.addEventListener("click",()=>{setView(b.dataset.view);if(b.dataset.view==="finance")renderFinance();}));
+  $("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
   $("#project-search").addEventListener("input",renderProjects);
   function resetProjectForm(){
     const form=$("#project-form");form.reset();delete form.dataset.editId;delete form.dataset.requestId;
@@ -953,7 +953,7 @@
     }finally{submit.disabled=false;submit.textContent="Send invitation";}
   });
 
-  $$$("[data-close]").forEach(b=>b.addEventListener("click",()=>{
+  $("[data-close]").forEach(b=>b.addEventListener("click",()=>{
     if(b.dataset.close==="client-modal") resetClientForm();
     if(b.dataset.close==="project-modal") resetProjectForm();
     $("#"+b.dataset.close).classList.add("hidden");
