@@ -35,8 +35,8 @@
     $("#welcome-title").textContent="Good to have you here, "+((p.full_name||"").split(" ")[0]||"");
     $("#welcome-subtitle").textContent=p.role==="client"?"A clear view of your projects, progress and anything that needs your attention.":p.role==="editor"?"Your assigned projects, production briefs and delivery deadlines.":"Here is what's happening across your workspace.";
     $("#today-label").textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
-    $(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
-    $(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
+    $$(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
+    $$(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
     $("#clients-view").classList.toggle("hidden",!isAdmin());
     showApp(); await refresh();
   }
@@ -286,8 +286,8 @@
     }
     if(isAdmin()){
       $("#requests-table").innerHTML=projectRequests.map(r=>'<tr><td>'+safe(r.clients?.name||"Client")+'</td><td><strong>'+safe(r.project_name)+'</strong><small class="subline">'+safe(r.property_address||"No property address")+'</small></td><td>'+safe(r.service)+'</td><td>'+r.quantity+'</td><td>'+date(r.preferred_due_date)+'</td><td><button class="btn secondary request-details" data-id="'+r.id+'" type="button">View brief</button></td><td><select class="inline-select request-status" data-id="'+r.id+'">'+["Submitted","Under review","Approved","Declined"].map(x=>'<option '+(x===r.status?'selected':'')+'>'+x+'</option>').join("")+'</select></td></tr>').join("")||'<tr><td colspan="7" class="empty">No project requests received yet.</td></tr>';
-      $(".request-status").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("project_requests").update({status:el.value,reviewed_at:new Date().toISOString()}).eq("id",el.dataset.id);if(error){toast("Could not update request: "+error.message);return;}toast("Request status updated.");await refreshProjectRequests();}));
-      $(".request-details").forEach(btn=>btn.addEventListener("click",()=>{const r=projectRequests.find(x=>x.id===btn.dataset.id);if(!r)return;window.alert("Project: "+r.project_name+"\nClient: "+(r.clients?.name||"")+"\nService: "+r.service+"\nQuantity: "+r.quantity+"\nProperty: "+(r.property_address||"Not supplied")+"\nPreferred deadline: "+(r.preferred_due_date||"Not supplied")+"\n\nBrief:\n"+(r.brief||"No additional instructions."));}));
+      $$(".request-status").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("project_requests").update({status:el.value,reviewed_at:new Date().toISOString()}).eq("id",el.dataset.id);if(error){toast("Could not update request: "+error.message);return;}toast("Request status updated.");await refreshProjectRequests();}));
+      $$(".request-details").forEach(btn=>btn.addEventListener("click",()=>{const r=projectRequests.find(x=>x.id===btn.dataset.id);if(!r)return;window.alert("Project: "+r.project_name+"\nClient: "+(r.clients?.name||"")+"\nService: "+r.service+"\nQuantity: "+r.quantity+"\nProperty: "+(r.property_address||"Not supplied")+"\nPreferred deadline: "+(r.preferred_due_date||"Not supplied")+"\n\nBrief:\n"+(r.brief||"No additional instructions."));}));
     }
   }
   $("#client-request-form").addEventListener("submit",async e=>{
@@ -336,10 +336,10 @@
   }
   function setView(view){
     $$(".view").forEach(el=>el.classList.add("hidden")); $("#"+view+"-view").classList.remove("hidden");
-    $$(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
+    $$$(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
     $("#page-title").textContent=view==="team"?"Team directory":view.charAt(0).toUpperCase()+view.slice(1);
   }
-  $(".nav-item").forEach(b=>b.addEventListener("click",()=>{setView(b.dataset.view);if(b.dataset.view==="finance")renderFinance();}));
+  $$(".nav-item").forEach(b=>b.addEventListener("click",()=>{setView(b.dataset.view);if(b.dataset.view==="finance")renderFinance();}));
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
   $("#project-search").addEventListener("input",renderProjects);
   function resetProjectForm(){
