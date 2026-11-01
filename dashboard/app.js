@@ -434,6 +434,20 @@
       $("#overview-view .card-heading .eyebrow").textContent="LATEST ACTIVITY";
       $("#overview-view .card-heading .text-button").textContent="View all →";
     }
+    const total=Math.max(1,projects.length);
+    const visualCards=[{id:"stat-active",icon:"◷",value:active},{id:"stat-qa",icon:"◇",value:inQA},{id:"stat-delivered",icon:"✓",value:delivered},{id:role()==="client"?"stat-attention":"stat-balance",icon:role()==="client"?"!":"$",value:role()==="client"?attention:finances.reduce((sum,x)=>sum+Number(x.quote_usd||0)-Number(x.paid_usd||0),0)}];
+    visualCards.forEach((item,index)=>{
+      const valueEl=$("#"+item.id);if(!valueEl)return;
+      const card=valueEl.closest(".stat-card");if(!card)return;
+      card.classList.add("overview-stat");
+      let icon=card.querySelector(".overview-stat-icon");
+      if(!icon){icon=document.createElement("span");icon.className="overview-stat-icon";card.insertBefore(icon,valueEl);}
+      icon.textContent=item.icon;
+      let meter=card.querySelector(".overview-meter");
+      if(!meter){meter=document.createElement("div");meter.className="overview-meter";meter.innerHTML="<i></i>";card.append(meter);}
+      const ratio=index===3&&role()!=="client"?Math.min(100,Math.max(0,quoted>0?item.value/quoted*100:0)):Math.min(100,item.value/total*100);
+      meter.querySelector("i").style.width=ratio+"%";
+    });
     $("#recent-projects").innerHTML=projects.slice(0,6).map(projectRow).join("")||'<tr><td colspan="4" class="empty">No projects yet.</td></tr>';
   }
   function projectRow(p){return '<tr><td><strong>'+safe(p.project_code||"—")+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.service)+'</td><td>'+date(p.due_date)+'</td><td><span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span></td></tr>';}
