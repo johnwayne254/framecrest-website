@@ -350,9 +350,9 @@
     $("#finance-revenue").textContent=money(revenue);$("#finance-outstanding").textContent=money(outstanding);
     $("#finance-quoted").textContent=money(quoted);$("#finance-collection").textContent=(quoted?Math.min(100,paid/quoted*100):0).toFixed(1)+"%";
     $("#finance-range-label").textContent=r.label;$("#finance-payment-count").textContent=filtered.length+" payment"+(filtered.length===1?"":"s");
-    const groups=new Map();filtered.forEach(x=>{const key=x.payment_date.slice(0,7);groups.set(key,(groups.get(key)||0)+Number(x.amount_usd||0));});
+    const groups=new Map();filtered.forEach(x=>{const key=r.period==="day"?x.payment_date:r.period==="month"?x.payment_date.slice(0,10):x.payment_date.slice(0,7);groups.set(key,(groups.get(key)||0)+Number(x.amount_usd||0));});
     const chartRows=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0])).slice(-12),max=Math.max(1,...chartRows.map(x=>x[1]));
-    $("#finance-chart-title").textContent=r.period==="day"?"Payments received today":r.period==="year"?"Monthly revenue":"Revenue by month";
+    $("#finance-chart-title").textContent=r.period==="day"?"Payments received on selected day":r.period==="month"?"Daily revenue":"Monthly revenue";
     $("#finance-chart").innerHTML=chartRows.length?chartRows.map(([key,value])=>'<div class="finance-bar-row"><span>'+safe(key)+'</span><div class="finance-bar-track"><i style="width:'+Math.max(2,value/max*100)+'%"></i></div><strong>'+money(value)+'</strong></div>').join(""):'<p class="empty">No payments recorded in this period yet.</p>';
     return {range:r,payments:filtered,revenue,quoted,paid,outstanding};
   }
