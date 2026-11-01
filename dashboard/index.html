@@ -82,6 +82,7 @@
         <button class="btn secondary" id="report-reset-dates" type="button">Reset dates</button>
       </div>
       <div class="report-export-actions" id="report-export-actions">
+        <button class="btn secondary" id="report-save" type="button">Save report</button>
         <button class="btn secondary" id="report-export-csv" type="button">Export CSV</button>
         <button class="btn secondary" id="report-export-excel" type="button">Export Excel</button>
         <button class="btn primary" id="report-export-pdf" type="button">Print / Save PDF</button>
@@ -91,7 +92,7 @@
         <div class="card-heading"><div><p class="eyebrow">REPORT PREVIEW</p><h3 id="report-title">Select a report category</h3></div><span class="muted" id="report-period-label">Choose a date range</span></div>
         <div class="report-empty"><span class="report-empty-icon">▥</span><strong>Your reports will appear here</strong><p>Choose a category and date range. Report data and export options will be added in the next implementation stage.</p></div>
       </div>
-      <div class="content-card report-history-card"><div class="card-heading"><div><p class="eyebrow">REPORT ARCHIVE</p><h3>Report history</h3></div></div><p class="muted">Previously generated reports will be listed here once report generation and archive storage are enabled.</p></div>
+      <div class="content-card report-history-card"><div class="card-heading"><div><p class="eyebrow">REPORT ARCHIVE</p><h3>Saved reports</h3></div><button class="btn secondary" id="report-history-refresh" type="button">Refresh history</button></div><div class="table-wrap"><table><thead><tr><th>REPORT</th><th>PERIOD</th><th>SAVED</th><th>ACTION</th></tr></thead><tbody id="report-history-list"><tr><td colspan="4" class="empty">No saved reports loaded.</td></tr></tbody></table></div></div>
     </section>
     <section id="team-view" class="view hidden">
       <div class="toolbar"><div><h2>Team directory</h2><p class="muted">Invite staff and manage Editor or QA responsibilities.</p></div><button class="btn primary" id="new-team-open" type="button">＋ Invite team member</button></div>
