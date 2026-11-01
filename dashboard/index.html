@@ -60,7 +60,7 @@
       </form><p class="message" id="client-request-message" aria-live="polite"></p></div>
       <div class="content-card"><div class="card-heading"><div><p class="eyebrow">REQUEST HISTORY</p><h3>Your submitted requests</h3></div></div><div class="table-wrap"><table><thead><tr><th>PROJECT</th><th>SERVICE</th><th>QUANTITY</th><th>SUBMITTED</th><th>STATUS</th></tr></thead><tbody id="client-requests-table"></tbody></table></div></div>
     </section>
-    <section id="requests-view" class="view hidden admin-only"><div class="toolbar"><div><h2>Project requests</h2><p class="muted">Review incoming client requests before creating and assigning projects.</p></div></div><div class="content-card"><div class="table-wrap"><table><thead><tr><th>CLIENT</th><th>PROJECT</th><th>SERVICE</th><th>QTY</th><th>PREFERRED DEADLINE</th><th>REQUEST</th><th>STATUS</th></tr></thead><tbody id="requests-table"></tbody></table></div></div></section>
+    <section id="requests-view" class="view hidden admin-only"><div class="toolbar"><div><h2>Project requests</h2><p class="muted">Review incoming client requests before creating and assigning projects.</p></div></div><div class="content-card"><div class="table-wrap"><table><thead><tr><th>CLIENT</th><th>PROJECT</th><th>SERVICE</th><th>QTY</th><th>PREFERRED DEADLINE</th><th>REQUEST</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody id="requests-table"></tbody></table></div></div></section>
     <section id="clients-view" class="view hidden">
       <div class="toolbar"><div><h2>Clients</h2><p class="muted">Your client directory and account records.</p></div><button class="btn primary" id="new-client-open">＋ Add client</button></div>
       <div class="content-card"><div class="table-wrap"><table><thead><tr><th>CLIENT</th><th>CONTACT</th><th>EMAIL</th><th>LOCATION</th><th>PROJECTS</th><th>ACTION</th></tr></thead><tbody id="clients-table"></tbody></table></div></div>
@@ -83,6 +83,7 @@
 <label>Service<select name="service" required><option>Photo Editing</option><option>Virtual Staging</option><option>Floor Plan Design</option><option>Real Estate Video Editing</option></select></label>
 <label>Quantity<input name="quantity" type="number" min="1" value="1" required></label>
 <label>Due date<input name="due_date" type="date" required></label>
+<label>Quoted amount (USD)<input name="quote_usd" type="number" min="0.01" step="0.01" required placeholder="e.g. 125.00"></label>
 <label>Assign editor<select name="editor_id" id="project-editor"><option value="">Unassigned</option></select></label>
 <label>Assign QA reviewer<select name="qa_id" id="project-qa"><option value="">Unassigned</option></select></label>
 <label class="span-2">Brief / project notes<textarea name="brief" rows="3" placeholder="Scope, style notes, file requirements…"></textarea></label>
