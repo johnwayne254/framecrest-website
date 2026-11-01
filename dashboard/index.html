@@ -23,8 +23,10 @@
     <nav id="main-nav">
       <button class="nav-item active" data-view="overview"><span>▦</span> Overview</button>
       <button class="nav-item" data-view="projects"><span>▤</span> Projects</button>
+      <button class="nav-item client-only" data-view="request"><span>＋</span> New project request</button>
+      <button class="nav-item admin-only" data-view="requests"><span>▧</span> Project requests</button>
       <button class="nav-item admin-only" data-view="clients"><span>♙</span> Clients</button>
-      <button class="nav-item admin-only" data-view="finance"><span>$</span> Finance</button>
+      <button class="nav-item" data-view="finance"><span>$</span> Finance</button>
       <button class="nav-item admin-only" data-view="team"><span>♙</span> Team</button>
     </nav>
     <div class="sidebar-bottom"><div class="profile-chip"><div class="avatar" id="avatar">F</div><div><strong id="user-name">Studio User</strong><small id="user-role">Team member</small></div></div><button id="sign-out" class="signout">Sign out ↗</button></div>
@@ -45,12 +47,26 @@
       <div class="toolbar"><div><h2>Project register</h2><p class="muted">Track briefs, production, quality checks and delivery.</p></div><input id="project-search" class="search" placeholder="Search projects…" type="search"></div>
       <div class="content-card"><div class="table-wrap"><table><thead><tr><th>PROJECT</th><th>CLIENT</th><th>SERVICE</th><th>EDITOR</th><th>QA REVIEWER</th><th>DUE DATE</th><th>STATUS</th><th>QA</th><th>ACTION</th></tr></thead><tbody id="projects-table"></tbody></table></div></div>
     </section>
+    <section id="request-view" class="view hidden client-only">
+      <div class="toolbar"><div><h2>Start a new project</h2><p class="muted">Send your project details to FrameCrest for review.</p></div></div>
+      <div class="content-card" style="padding:24px;max-width:850px"><form id="client-request-form" class="form-grid">
+        <label>Project name<input name="project_name" required placeholder="e.g. 24 Oak Street listing"></label>
+        <label>Service<select name="service" required><option>Photo Editing</option><option>Virtual Staging</option><option>Floor Plan Design</option><option>Real Estate Video Editing</option></select></label>
+        <label>Quantity<input name="quantity" type="number" min="1" value="1" required></label>
+        <label>Preferred deadline<input name="preferred_due_date" type="date"></label>
+        <label class="span-2">Property address / listing location<input name="property_address" placeholder="Street, city, state or listing reference"></label>
+        <label class="span-2">Project brief and instructions<textarea name="brief" rows="5" maxlength="4000" placeholder="Describe the property, files available, editing style and any special instructions."></textarea></label>
+        <div class="form-actions span-2"><button class="btn primary" type="submit">Submit project request</button></div>
+      </form><p class="message" id="client-request-message" aria-live="polite"></p></div>
+      <div class="content-card"><div class="card-heading"><div><p class="eyebrow">REQUEST HISTORY</p><h3>Your submitted requests</h3></div></div><div class="table-wrap"><table><thead><tr><th>PROJECT</th><th>SERVICE</th><th>QUANTITY</th><th>SUBMITTED</th><th>STATUS</th></tr></thead><tbody id="client-requests-table"></tbody></table></div></div>
+    </section>
+    <section id="requests-view" class="view hidden admin-only"><div class="toolbar"><div><h2>Project requests</h2><p class="muted">Review incoming client requests before creating and assigning projects.</p></div></div><div class="content-card"><div class="table-wrap"><table><thead><tr><th>CLIENT</th><th>PROJECT</th><th>SERVICE</th><th>QTY</th><th>PREFERRED DEADLINE</th><th>REQUEST</th><th>STATUS</th></tr></thead><tbody id="requests-table"></tbody></table></div></div></section>
     <section id="clients-view" class="view hidden">
       <div class="toolbar"><div><h2>Clients</h2><p class="muted">Your client directory and account records.</p></div><button class="btn primary" id="new-client-open">＋ Add client</button></div>
       <div class="content-card"><div class="table-wrap"><table><thead><tr><th>CLIENT</th><th>CONTACT</th><th>EMAIL</th><th>LOCATION</th><th>PROJECTS</th><th>ACTION</th></tr></thead><tbody id="clients-table"></tbody></table></div></div>
     </section>
     <section id="finance-view" class="view hidden">
-      <div class="toolbar"><div><h2>Project finances</h2><p class="muted">Track quotes, payments and outstanding balances.</p></div></div>
+      <div class="toolbar"><div><h2>Project finances</h2><p class="muted" id="finance-subtitle">Track quotes, payments and outstanding balances.</p></div></div>
       <div class="content-card"><div class="table-wrap"><table><thead><tr><th>PROJECT</th><th>CLIENT</th><th>QUOTE (USD)</th><th>PAID (USD)</th><th>OUTSTANDING</th><th>ACTION</th></tr></thead><tbody id="finance-table"></tbody></table></div></div>
     </section>
     <section id="team-view" class="view hidden">
