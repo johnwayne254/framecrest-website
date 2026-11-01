@@ -47,3 +47,5 @@
 .report-history-card .card-heading{padding:18px 20px}
 .report-history-card table{min-width:600px}
 .report-history-card .btn{padding:8px 12px}
+
+.report-archive-export{display:flex;align-items:center;gap:7px;min-width:180px}.report-archive-export .inline-select{min-width:88px;max-width:100px}.report-history-card td{vertical-align:middle}.report-history-card .report-archive-open,.report-history-card .report-archive-download{white-space:nowrap}@media(max-width:650px){.report-archive-export{min-width:165px}}
