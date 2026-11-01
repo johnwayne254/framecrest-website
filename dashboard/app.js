@@ -275,7 +275,8 @@
     $("#payments-history-list").innerHTML=rows.map(x=>'<article class="activity-entry"><span class="activity-dot project_created"></span><div><strong>'+money(x.amount_usd)+' · '+safe(x.payment_method)+'</strong><p>'+date(x.payment_date)+' · '+safe(x.reference||"No reference")+(x.notes?" · "+safe(x.notes):"")+'</p></div></article>').join("")||'<p class="empty">No payments recorded yet.</p>';
   }
     async function refreshProjectRequests(){
-    const {data,error}=await db.from("project_requests").select("id,client_id,project_name,service,quantity,property_address,preferred_due_date,brief,status,created_at,clients(name)").order("created_at",{ascending:false});
+    const selection=isAdmin()?"id,client_id,project_name,service,quantity,property_address,preferred_due_date,brief,status,created_at,clients(name)":"id,client_id,project_name,service,quantity,property_address,preferred_due_date,brief,status,created_at";
+    const {data,error}=await db.from("project_requests").select(selection).order("created_at",{ascending:false});
     if(error){console.error("FrameCrest project requests:",error);toast("Could not load project requests: "+error.message);return;}
     projectRequests=data||[];renderProjectRequests();
   }
