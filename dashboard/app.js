@@ -204,6 +204,7 @@
       const {error}=await db.from("report_archives").insert({title,category:"business",date_from:range.from,date_to:range.to,report_data:rows,created_by:user.id,client_id:null});
       if(error)throw error;
       $("#report-category").value="business";$("#report-start-date").value=range.from;$("#report-end-date").value=range.to;
+      setView("reports");
       renderReportWorkspace();
       const output=$("#report-workspace .report-output");
       output.innerHTML='<div class="report-empty"><strong>Monthly summary saved</strong><p>'+safe(range.label)+' · This is a saved monthly snapshot based on the records currently available in FrameCrest.</p></div><div class="table-wrap"><table><tbody>'+rows.map((row,i)=>'<tr>'+row.map(cell=>i===0?'<th>'+safe(cell)+'</th>':'<td>'+safe(cell)+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>';
@@ -224,6 +225,7 @@
     body.innerHTML=(data||[]).map(x=>'<tr><td><strong>'+safe(x.title)+'</strong></td><td>'+safe(x.date_from||"Beginning")+' – '+safe(x.date_to||"Today")+'</td><td>'+new Date(x.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</td><td><button class="btn secondary report-archive-open" data-id="'+safe(x.id)+'" type="button">View</button></td></tr>').join("")||'<tr><td colspan="4" class="empty">No saved reports yet.</td></tr>';
     body.querySelectorAll(".report-archive-open").forEach(button=>button.addEventListener("click",async()=>{
       const item=data.find(x=>x.id===button.dataset.id);if(!item)return;
+      setView("reports");
       $("#report-category").value=item.category;
       $("#report-start-date").value=item.date_from||"";
       $("#report-end-date").value=item.date_to||"";
@@ -266,6 +268,8 @@
   $("#report-export-excel").addEventListener("click",()=>{
     try{
       const rows=reportExportRows(),esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+      const title=$("#report-title").textContent,period=$("#report-period-label").textContent;
+      const workbookRows=[["FrameCrest Studios"],[title],[period],[],...rows];
       const xml='<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Report"><Table>'+rows.map(row=>"<Row>"+row.map(v=>'<Cell><Data ss:Type="String">'+esc(v)+'</Data></Cell>').join("")+"</Row>").join("")+"</Table></Worksheet></Workbook>";
       downloadReport(new Blob([xml],{type:"application/vnd.ms-excel"}),reportFileName("xls"));toast("Excel-compatible report exported.");
     }catch(e){toast(e.message);}
