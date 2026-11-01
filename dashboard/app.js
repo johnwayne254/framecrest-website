@@ -3,7 +3,7 @@
   const configured = cfg.supabaseUrl && cfg.supabaseAnonKey && !cfg.supabaseUrl.includes("YOUR_") && !cfg.supabaseAnonKey.includes("YOUR_");
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
-  let db, user, profile, projects = [], clients = [], editors = [], qaReviewers = [], finances = [], team = [], projectRequests = [], inboxRows = [], paymentRecords = [], invoiceRecords = [];
+  let db, user, profile, projects = [], clients = [], editors = [], qaReviewers = [], finances = [], team = [], projectRequests = [], inboxRows = [], paymentRecords = [], invoiceRecords = [], qualityReviews = [];
   const money = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(Number(n||0));
   const safe = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const date = v => v ? new Date(v+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
@@ -386,7 +386,8 @@
       await refreshProjectRequests();
       renderFinance();
     }
-    renderProjects(); renderOverview();
+    const reviewResult=await db.from("editor_quality_reviews").select("id,project_id,editor_id,reviewer_id,quality_score,feedback,created_at,updated_at").order("created_at",{ascending:false}); qualityReviews=reviewResult.data||[]; if(reviewResult.error)console.warn("Editor quality reviews:",reviewResult.error.message);
+    renderProjects(); renderOverview(); renderEditorQualityPanel();
     const ids=projects.map(p=>p.id);
     if(ids.length){
       const [payResult,invoiceResult]=await Promise.all([
