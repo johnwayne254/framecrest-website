@@ -8,6 +8,65 @@
   const safe = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const date = v => v ? new Date(v+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
   const toast = msg => { const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),3200); };
+  let notificationChannel=null, notificationTimer=null, notificationTarget=null;
+  const soundPreferenceKey="framecrest_notification_sound";
+  function playNotificationSound(){
+    if(!$("#notification-sound")?.checked)return;
+    try{
+      const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+      if(!AudioContextClass)return;
+      const ctx=new AudioContextClass(),osc=ctx.createOscillator(),gain=ctx.createGain();
+      osc.type="sine";osc.frequency.setValueAtTime(740,ctx.currentTime);
+      osc.frequency.setValueAtTime(980,ctx.currentTime+0.12);
+      gain.gain.setValueAtTime(0.0001,ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.12,ctx.currentTime+0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.32);
+      osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+0.34);
+      osc.onended=()=>ctx.close();
+    }catch(e){console.warn("Notification sound unavailable",e);}
+  }
+  function showNotification(title,message,projectId=null,isMessage=false){
+    $("#notification-title").textContent=title;
+    $("#notification-message").textContent=message;
+    notificationTarget=projectId?{projectId,isMessage}:null;
+    const popup=$("#notification-popup");popup.classList.add("show");
+    clearTimeout(notificationTimer);notificationTimer=setTimeout(()=>popup.classList.remove("show"),7500);
+    playNotificationSound();
+  }
+  $("#notification-sound").checked=localStorage.getItem(soundPreferenceKey)==="on";
+  $("#notification-sound").addEventListener("change",e=>localStorage.setItem(soundPreferenceKey,e.target.checked?"on":"off"));
+  $("#notification-dismiss").addEventListener("click",()=>$("#notification-popup").classList.remove("show"));
+  $("#notification-popup").addEventListener("click",e=>{
+    if(e.target.id==="notification-dismiss"||!notificationTarget)return;
+    const target=notificationTarget;$("#notification-popup").classList.remove("show");
+    if(target.isMessage)openProjectMessages(target.projectId);else setView("projects");
+  });
+  async function subscribeToNotifications(){
+    if(notificationChannel){await db.removeChannel(notificationChannel);notificationChannel=null;}
+    if(role()==="editor")return;
+    const projectSnapshot=new Map(projects.map(p=>[p.id,{status:p.status,qa_status:p.qa_status,due_date:p.due_date,name:p.name,project_code:p.project_code}]));
+    notificationChannel=db.channel("framecrest-notifications-"+user.id)
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"project_messages"},payload=>{
+        const msg=payload.new;if(!msg||msg.sender_id===user.id)return;
+        const project=projects.find(p=>p.id===msg.project_id);if(!project)return;
+        const sender=msg.sender_id===project.client_id?"Client":"Project team";
+        showNotification("New project message",sender+" · "+project.name+": "+String(msg.message||"").slice(0,115),project.id,true);
+        refreshMessageInbox();
+      })
+      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"projects"},payload=>{
+        const next=payload.new;if(!next||!projects.some(p=>p.id===next.id))return;
+        const previous=projectSnapshot.get(next.id);
+        projectSnapshot.set(next.id,{status:next.status,qa_status:next.qa_status,due_date:next.due_date,name:next.name,project_code:next.project_code});
+        if(!previous)return;
+        const changes=[];
+        if(previous.status!==next.status)changes.push("status: "+(next.status||"updated"));
+        if(previous.qa_status!==next.qa_status)changes.push("quality check: "+(next.qa_status||"updated"));
+        if(previous.due_date!==next.due_date)changes.push("due date changed");
+        if(previous.name!==next.name)changes.push("project details changed");
+        if(changes.length)showNotification("Project updated",(next.project_code||"Project")+" · "+(next.name||"")+". "+changes.join(", "),next.id,false);
+      })
+      .subscribe(status=>{if(status==="CHANNEL_ERROR"||status==="TIMED_OUT")console.warn("FrameCrest live notifications:",status);});
+  }
   const role = () => profile?.role || "client";
   const isAdmin = () => role()==="admin";
   const statusClass = s => String(s||"").toLowerCase().replaceAll(" ","-");
@@ -39,7 +98,7 @@
     $$(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
     $("#clients-view").classList.toggle("hidden",!isAdmin());
     $("#messages-nav").classList.toggle("hidden",role()==="editor");
-    showApp(); await refresh();
+    showApp(); await refresh(); await subscribeToNotifications();
   }
   async function refreshClients(){
     if(!isAdmin()) return;
