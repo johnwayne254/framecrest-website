@@ -671,7 +671,6 @@
     const totalDelivered=rows.reduce((sum,x)=>sum+x.delivered,0);
     const onTimeTotal=rows.reduce((sum,x)=>sum+x.onTimeCount,0);
     const dueTotal=rows.reduce((sum,x)=>sum+x.dueCount,0);
-    const fmt=value=>value===null?"—":Math.round(value)+"%";
     const metricCell=(value,detail="")=>'<span class="performance-metric">'+(value===null?"—":Math.round(value)+"/100")+'</span>'+(detail?'<small class="performance-detail">'+safe(detail)+'</small>':"");
     $("#performance-summary").innerHTML=[
       ["Editors assessed",evaluated.length+" / "+editorsList.length],
@@ -681,7 +680,8 @@
     ].map(([label,value])=>'<article class="stat-card"><span>'+safe(label)+'</span><strong>'+safe(value)+'</strong></article>').join("");
     $("#performance-note").textContent="Balanced score: quality 35%, on-time delivery 25%, productivity 20%, revision avoidance 10%, consistency 10%. Missing metrics are excluded and the remaining weights are normalized. Productivity is relative to the highest editor delivery count in this period. Consistency uses recorded active weeks from the first observed production event. Tracking starts from the migration date; earlier activity is not reconstructed.";
     host.innerHTML=rows.map(x=>{
-      const name='<button class="team-name-link performance-editor-link" data-id="'+x.editor.id+'" type="button">'+safe(x.editor.full_name||"Unnamed editor")+'</button>'+(x.editor.is_active===false?'<small class="performance-detail">Disabled account</small>':"");
+      const canOpenHistory=team.some(m=>m.id===x.editor.id);
+      const name=(canOpenHistory?'<button class="team-name-link performance-editor-link" data-id="'+x.editor.id+'" type="button">'+safe(x.editor.full_name||"Unnamed editor")+'</button>':'<strong>'+safe(x.editor.full_name||"Former editor")+'</strong>')+(x.editor.is_active===false?'<small class="performance-detail">Disabled or former account</small>':"");
       const overall=x.overall===null?"—":Math.round(x.overall)+"/100";
       const coverage=x.coverage?'<small class="performance-detail">'+x.coverage+'% weight coverage</small>':'<small class="performance-detail">No recorded data</small>';
       return '<tr><td>'+name+'</td><td><strong>'+overall+'</strong>'+coverage+'</td><td>'+metricCell(x.quality,x.quality===null?"No reviews": "Average of "+x.reviews+" reviews")+'</td><td>'+metricCell(x.onTimeScore,x.dueCount?x.onTimeCount+" of "+x.dueCount+" due-dated deliveries on time":"No due-dated deliveries")+'</td><td>'+metricCell(x.productivity,x.delivered+" delivered; relative to team leader")+'</td><td>'+metricCell(x.revisionScore,x.submitted?x.revisions+" revision requests / "+x.submitted+" submissions":"No submissions recorded")+'</td><td>'+metricCell(x.consistency,x.consistency===null?"No production events":x.activeWeeks+" active weeks / "+x.weekCount+" weeks")+'</td><td>'+x.delivered+'</td></tr>';
