@@ -394,9 +394,14 @@
   }
   async function updateInvoiceStatus(id,status){
     if(!isAdmin())return;
+    const inv=invoiceRecords.find(x=>x.id===id);if(!inv)return;
+    if(status==="Paid"){
+      const {error:paymentError}=await db.from("project_payments").insert({project_id:inv.project_id,amount_usd:inv.amount_usd,payment_date:new Date().toISOString().slice(0,10),payment_method:"Other",reference:inv.invoice_number,notes:"Invoice settled: "+inv.invoice_number,created_by:user.id});
+      if(paymentError){toast("Could not record invoice payment: "+paymentError.message);return;}
+    }
     const {error}=await db.from("project_invoices").update({status,updated_at:new Date().toISOString()}).eq("id",id);
-    if(error){toast("Could not update invoice: "+error.message);return;}
-    toast("Invoice marked "+status.toLowerCase()+".");await refresh();
+    if(error){toast("Payment was recorded, but invoice status could not be updated: "+error.message);await refresh();return;}
+    toast(status==="Paid"?"Invoice settled and payment recorded.":"Invoice voided.");await refresh();
   }
   function invoiceMarkup(inv){
     const p=projects.find(x=>x.id===inv.project_id),client=p?.clients?.name||"Client";
