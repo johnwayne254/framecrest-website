@@ -166,6 +166,55 @@
     if(!rows.length)throw new Error("There is no report data to export for this category.");
     return rows;
   }
+  function previousMonthRange(){
+    const now=new Date(),first=new Date(now.getFullYear(),now.getMonth()-1,1),last=new Date(now.getFullYear(),now.getMonth(),0);
+    const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    return {from:iso(first),to:iso(last),label:first.toLocaleDateString("en-US",{month:"long",year:"numeric"})};
+  }
+  async function generateMonthlySummary(){
+    if(!isAdmin())return;
+    const button=$("#generate-monthly-summary"),range=previousMonthRange();
+    button.disabled=true;button.textContent="Generating summary…";
+    try{
+      const inPeriod=value=>{if(!value)return false;const d=String(value).slice(0,10);return d>=range.from&&d<=range.to;};
+      const periodProjects=projects.filter(p=>inPeriod(p.created_at));
+      const delivered=projects.filter(p=>p.status==="Delivered"&&inPeriod(p.due_date));
+      const periodPayments=paymentRecords.filter(p=>inPeriod(p.payment_date));
+      const periodInvoices=invoiceRecords.filter(i=>inPeriod(i.issue_date));
+      const activeClients=new Set(periodProjects.map(p=>p.client_id).filter(Boolean)).size;
+      const qaPassed=periodProjects.filter(p=>p.qa_status==="Passed").length;
+      const changes=periodProjects.filter(p=>p.qa_status==="Changes required"||p.status==="Revisions").length;
+      const overdue=projects.filter(p=>p.due_date&&p.due_date>=range.from&&p.due_date<=range.to&&p.status!=="Delivered"&&p.status!=="Cancelled").length;
+      const revenue=periodPayments.reduce((sum,p)=>sum+Number(p.amount_usd||0),0);
+      const quoted=periodProjects.reduce((sum,p)=>sum+Number((finances.find(f=>f.project_id===p.id)||{}).quote_usd||0),0);
+      const rows=[
+        ["METRIC","RESULT"],
+        ["Reporting month",range.label],
+        ["New projects",periodProjects.length],
+        ["Projects delivered (due in month)",delivered.length],
+        ["Clients with new projects",activeClients],
+        ["Payments received (USD)",money(revenue)],
+        ["Invoices issued",periodInvoices.length],
+        ["Quoted value of new projects (USD)",money(quoted)],
+        ["QA passed among new projects",qaPassed],
+        ["Projects needing changes among new projects",changes],
+        ["Projects overdue at month-end (based on due date)",overdue]
+      ];
+      const title="Monthly business summary · "+range.label;
+      const {error}=await db.from("report_archives").insert({title,category:"business",date_from:range.from,date_to:range.to,report_data:rows,created_by:user.id,client_id:null});
+      if(error)throw error;
+      $("#report-category").value="business";$("#report-start-date").value=range.from;$("#report-end-date").value=range.to;
+      renderReportWorkspace();
+      const output=$("#report-workspace .report-output");
+      output.innerHTML='<div class="report-empty"><strong>Monthly summary saved</strong><p>'+safe(range.label)+' · This is a saved monthly snapshot based on the records currently available in FrameCrest.</p></div><div class="table-wrap"><table><tbody>'+rows.map((row,i)=>'<tr>'+row.map(cell=>i===0?'<th>'+safe(cell)+'</th>':'<td>'+safe(cell)+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>';
+      $("#report-title").textContent=title;
+      $("#report-period-label").textContent=range.from+" to "+range.to;
+      await loadReportArchives();
+      toast("Monthly business summary saved.");
+    }catch(error){toast("Could not generate summary: "+(error.message||"Please try again."));}
+    finally{button.disabled=false;button.textContent="Generate last month's summary";}
+  }
+  $("#generate-monthly-summary").addEventListener("click",generateMonthlySummary);
   async function loadReportArchives(){
     const body=$("#report-history-list");
     if(!body)return;
@@ -259,7 +308,7 @@
     $("#today-label").textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
     $$(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
     $$(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
-    const reportsNav=$("#reports-nav");if(reportsNav)reportsNav.classList.toggle("hidden",!["admin","client"].includes(role()));
+    const reportsNav=$("#reports-nav");if(reportsNav)reportsNav.classList.toggle("hidden",!["admin","client"].includes(role()));const monthlySummaryButton=$("#generate-monthly-summary");if(monthlySummaryButton)monthlySummaryButton.classList.toggle("hidden",!isAdmin());
     $("#clients-view").classList.toggle("hidden",!isAdmin());
     $("#messages-nav").classList.toggle("hidden",role()==="editor");
     const financeNav=$('.nav-item[data-view="finance"]')[0];if(financeNav)financeNav.classList.toggle("hidden",role()==="editor");
