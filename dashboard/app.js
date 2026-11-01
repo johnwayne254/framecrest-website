@@ -3,7 +3,7 @@
   const configured = cfg.supabaseUrl && cfg.supabaseAnonKey && !cfg.supabaseUrl.includes("YOUR_") && !cfg.supabaseAnonKey.includes("YOUR_");
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
-  let db, user, profile, projects = [], clients = [], editors = [], qaReviewers = [], finances = [], team = [], projectRequests = [];
+  let db, user, profile, projects = [], clients = [], editors = [], qaReviewers = [], finances = [], team = [], projectRequests = [], inboxRows = [];
   const money = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(Number(n||0));
   const safe = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const date = v => v ? new Date(v+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
@@ -72,7 +72,7 @@
       await refreshProjectRequests();
       renderFinance();
     }
-    renderProjects(); renderOverview();
+    renderProjects(); renderOverview(); await refreshMessageInbox();
   }
   function renderOverview(){
     const active=projects.filter(p=>["Awaiting files","In progress","Revisions"].includes(p.status)).length;
@@ -227,6 +227,9 @@
     if(error){$("#messages-list").innerHTML='<p class="message">Could not load messages: '+safe(error.message)+'</p>';return;}
     $("#messages-list").innerHTML=(data||[]).map(m=>{const own=m.sender_id===user.id;const who=own?"You":m.profiles?.full_name||(m.profiles?.role==="client"?"Client":"FrameCrest team");return '<article class="activity-entry"><div><strong>'+safe(who)+'</strong><p style="white-space:pre-wrap">'+safe(m.message)+'</p><p>'+new Date(m.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</p></div></article>';}).join("")||'<p class="empty">No messages yet. Start the conversation below.</p>';
     $("#messages-list").scrollTop=$("#messages-list").scrollHeight;
+    const {error:readError}=await db.from("project_message_reads").upsert({project_id:projectId,user_id:user.id,last_read_at:new Date().toISOString()},{onConflict:"project_id,user_id"});
+    if(readError)console.error("FrameCrest message read state:",readError);
+    await refreshMessageInbox();
   }
   $("#message-form").addEventListener("submit",async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector('button[type="submit"]');if(b.disabled)return;const projectId=f.elements.project_id.value,message=String(f.elements.message.value||"").trim();if(!message)return;b.disabled=true;b.textContent="Sending…";
     try{const {error}=await db.from("project_messages").insert({project_id:projectId,sender_id:user.id,message});if(error)throw error;f.elements.message.value="";$("#message-feedback").textContent="Message sent.";await loadProjectMessages(projectId);}
@@ -366,10 +369,33 @@
     $("#project-editor").innerHTML='<option value="">Unassigned</option>'+editors.map(e=>'<option value="'+e.id+'">'+safe(e.full_name||"Unnamed editor")+'</option>').join("");
     $("#project-qa").innerHTML='<option value="">Unassigned</option>'+qaReviewers.map(e=>'<option value="'+e.id+'">'+safe(e.full_name||"Unnamed QA reviewer")+'</option>').join("");
   }
+  async function refreshMessageInbox(){
+    if(role()==="editor"){inboxRows=[];return;}
+    const ids=projects.map(p=>p.id);
+    if(!ids.length){inboxRows=[];renderMessageInbox();return;}
+    const results=await Promise.all([
+      db.from("project_messages").select("id,project_id,message,sender_id,created_at").in("project_id",ids).order("created_at",{ascending:false}),
+      db.from("project_message_reads").select("project_id,last_read_at").eq("user_id",user.id).in("project_id",ids)
+    ]);
+    const mr=results[0],rr=results[1];
+    if(mr.error){console.error(mr.error);toast("Could not load messages: "+mr.error.message);return;}
+    if(rr.error){console.error(rr.error);toast("Could not load read status: "+rr.error.message);return;}
+    const reads=new Map((rr.data||[]).map(x=>[x.project_id,new Date(x.last_read_at).getTime()]));
+    const latest=new Map();(mr.data||[]).forEach(m=>{if(!latest.has(m.project_id))latest.set(m.project_id,m);});
+    inboxRows=projects.filter(p=>latest.has(p.id)).map(p=>{const last=latest.get(p.id),readAt=reads.get(p.id)||0;const unread=(mr.data||[]).filter(m=>m.project_id===p.id&&new Date(m.created_at).getTime()>readAt&&m.sender_id!==user.id).length;return {project:p,last,unread};}).sort((x,y)=>new Date(y.last.created_at)-new Date(x.last.created_at));
+    renderMessageInbox();
+  }
+  function renderMessageInbox(){
+    const count=inboxRows.reduce((n,x)=>n+x.unread,0);$("#messages-unread-count").textContent=count>99?"99+":count;$("#messages-unread-count").classList.toggle("hidden",count===0);
+    $("#messages-inbox-table").innerHTML=inboxRows.map(x=>'<tr><td><strong>'+safe(x.project.project_code)+' · '+safe(x.project.name)+'</strong></td><td>'+safe(x.project.clients?.name||"—")+'</td><td class="'+(x.unread?"inbox-unread":"")+'">'+safe(x.last.message.length>100?x.last.message.slice(0,100)+"…":x.last.message)+'</td><td>'+new Date(x.last.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</td><td>'+(x.unread?'<span class="status in-progress">'+x.unread+' new</span>':"—")+'</td><td><button class="btn secondary inbox-open" data-id="'+x.project.id+'" type="button">Open</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No conversations yet. Messages will appear here when someone starts a project conversation.</td></tr>';
+    $$(".inbox-open").forEach(b=>b.addEventListener("click",()=>openProjectMessages(b.dataset.id)));
+  }
+  $("#messages-refresh").addEventListener("click",refreshMessageInbox);
   function setView(view){
-    $$(".view").forEach(el=>el.classList.add("hidden")); $("#"+view+"-view").classList.remove("hidden");
-    $(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
+    $$(".view").forEach(el=>el.classList.add("hidden"));$("#"+view+"-view").classList.remove("hidden");
+    $$(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
     $("#page-title").textContent=view==="team"?"Team directory":view.charAt(0).toUpperCase()+view.slice(1);
+    if(view==="inbox")refreshMessageInbox();
   }
   $$(".nav-item").forEach(b=>b.addEventListener("click",()=>{setView(b.dataset.view);if(b.dataset.view==="finance")renderFinance();}));
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
