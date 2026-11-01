@@ -652,7 +652,7 @@
         weekCount=Math.max(1,Math.ceil((new Date(range.end+"T12:00:00")-new Date(base+"T12:00:00"))/604800000)+1);
         consistency=Math.min(100,activeWeeks.size/weekCount*100);
       }
-      return {editor,events,delivered:delivered.length,submitted:submitted.length,revisions:revisions.length,quality,onTimeScore,onTimeCount:onTime,dueCount:dueEvents.length,revisionScore,consistency,activeWeeks:activeWeeks.size,weekCount};
+      return {editor,events,reviews:reviews.length,delivered:delivered.length,submitted:submitted.length,revisions:revisions.length,quality,onTimeScore,onTimeCount:onTime,dueCount:dueEvents.length,revisionScore,consistency,activeWeeks:activeWeeks.size,weekCount};
     });
     const maxDelivered=Math.max(0,...raw.map(x=>x.delivered));
     const rows=raw.map(x=>{
@@ -680,7 +680,7 @@
       const name='<button class="team-name-link performance-editor-link" data-id="'+x.editor.id+'" type="button">'+safe(x.editor.full_name||"Unnamed editor")+'</button>'+(x.editor.is_active===false?'<small class="performance-detail">Disabled account</small>':"");
       const overall=x.overall===null?"—":Math.round(x.overall)+"/100";
       const coverage=x.coverage?'<small class="performance-detail">'+x.coverage+'% weight coverage</small>':'<small class="performance-detail">No recorded data</small>';
-      return '<tr><td>'+name+'</td><td><strong>'+overall+'</strong>'+coverage+'</td><td>'+metricCell(x.quality,x.quality===null?"No reviews": "Average of "+x.events.length*0+x.editor.role+" reviews")+'</td><td>'+metricCell(x.onTimeScore,x.dueCount?x.onTimeCount+" of "+x.dueCount+" due-dated deliveries on time":"No due-dated deliveries")+'</td><td>'+metricCell(x.productivity,x.delivered+" delivered; relative to team leader")+'</td><td>'+metricCell(x.revisionScore,x.submitted?x.revisions+" revision requests / "+x.submitted+" submissions":"No submissions recorded")+'</td><td>'+metricCell(x.consistency,x.consistency===null?"No production events":x.activeWeeks+" active weeks / "+x.weekCount+" weeks")+'</td><td>'+x.delivered+'</td></tr>';
+      return '<tr><td>'+name+'</td><td><strong>'+overall+'</strong>'+coverage+'</td><td>'+metricCell(x.quality,x.quality===null?"No reviews": "Average of "+x.reviews+" reviews")+'</td><td>'+metricCell(x.onTimeScore,x.dueCount?x.onTimeCount+" of "+x.dueCount+" due-dated deliveries on time":"No due-dated deliveries")+'</td><td>'+metricCell(x.productivity,x.delivered+" delivered; relative to team leader")+'</td><td>'+metricCell(x.revisionScore,x.submitted?x.revisions+" revision requests / "+x.submitted+" submissions":"No submissions recorded")+'</td><td>'+metricCell(x.consistency,x.consistency===null?"No production events":x.activeWeeks+" active weeks / "+x.weekCount+" weeks")+'</td><td>'+x.delivered+'</td></tr>';
     }).join("")||'<tr><td colspan="8" class="empty">No editor accounts are available.</td></tr>';
     $(".performance-editor-link").forEach(button=>button.addEventListener("click",()=>openTeamHistory(button.dataset.id)));
   }
