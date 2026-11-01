@@ -33,7 +33,7 @@
   }
   $("#notification-sound").checked=localStorage.getItem(soundPreferenceKey)==="on";
   $("#notification-sound").addEventListener("change",e=>{localStorage.setItem(soundPreferenceKey,e.target.checked?"on":"off");if(e.target.checked){const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(AudioContextClass){notificationAudioContext=notificationAudioContext||new AudioContextClass();notificationAudioContext.resume();}}});
-  if($("#notification-sound").checked){$("#notification-sound").checked=false;localStorage.setItem(soundPreferenceKey,"off");}
+  document.addEventListener("click",()=>{if($("#notification-sound").checked){const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(AudioContextClass){notificationAudioContext=notificationAudioContext||new AudioContextClass();notificationAudioContext.resume();}}},{once:true});
   $("#notification-dismiss").addEventListener("click",()=>$("#notification-popup").classList.remove("show"));
   $("#notification-popup").addEventListener("click",e=>{
     if(e.target.id==="notification-dismiss"||!notificationTarget)return;
