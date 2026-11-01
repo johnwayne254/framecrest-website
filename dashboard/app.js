@@ -3,7 +3,7 @@
   const configured = cfg.supabaseUrl && cfg.supabaseAnonKey && !cfg.supabaseUrl.includes("YOUR_") && !cfg.supabaseAnonKey.includes("YOUR_");
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
-  let db, user, profile, projects = [], clients = [], editors = [], qaReviewers = [], finances = [], team = [];
+  let db, user, profile, projects = [], clients = [], editors = [], qaReviewers = [], finances = [], team = [], projectRequests = [];
   const money = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(Number(n||0));
   const safe = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const date = v => v ? new Date(v+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
@@ -35,7 +35,8 @@
     $("#welcome-title").textContent="Good to have you here, "+((p.full_name||"").split(" ")[0]||"");
     $("#welcome-subtitle").textContent=p.role==="client"?"A clear view of your projects, progress and anything that needs your attention.":p.role==="editor"?"Your assigned projects, production briefs and delivery deadlines.":"Here is what's happening across your workspace.";
     $("#today-label").textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
-    $$(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
+    $(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
+    $(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
     $("#clients-view").classList.toggle("hidden",!isAdmin());
     showApp(); await refresh();
   }
@@ -49,20 +50,26 @@
   }
   async function refresh(){
     const jobs=[db.from("projects").select("id,project_code,name,client_id,service,quantity,editor_id,qa_id,due_date,status,qa_status,created_at,brief,folder_url,clients(name),profiles!projects_editor_id_fkey(full_name),qa_profile:profiles!projects_qa_id_fkey(full_name)").order("created_at",{ascending:false})];
-    if(isAdmin()) jobs.push(db.from("profiles").select("id,full_name").eq("role","editor").order("full_name"),db.from("project_financials").select("project_id,quote_usd,paid_usd"));
+    jobs.push(db.from("project_financials").select("project_id,quote_usd,paid_usd"));
+    if(isAdmin()) jobs.push(db.from("profiles").select("id,full_name").eq("role","editor").order("full_name"));
     const results=await Promise.all(jobs);
     const pr=results[0];
     if(pr.error){toast("Could not load projects: "+pr.error.message);console.error("FrameCrest projects load:",pr.error);}
     else projects=pr.data||[];
+    finances=results[1].data||[];
+    if(results[1].error) console.error("FrameCrest project finances:",results[1].error);
     if(isAdmin()){
-      editors=results[1].data||[]; finances=results[2].data||[];
-      if(results[1].error) console.error("FrameCrest editors load:",results[1].error);
-      if(results[2].error) toast("Could not load project finances: "+results[2].error.message);
+      editors=results[2].data||[];
+      if(results[2].error) console.error("FrameCrest editors load:",results[2].error);
       await refreshClients();
       const [teamResult,qaResult]=await Promise.all([db.from("profiles").select("id,full_name,role,client_id,account_type,is_active").eq("account_type","staff").neq("role","admin").order("full_name"),db.from("profiles").select("id,full_name").eq("role","qa").order("full_name")]);
       team=teamResult.data||[];qaReviewers=qaResult.data||[];renderTeam();fillSelects();
       const balance=finances.reduce((a,x)=>a+Number(x.quote_usd||0)-Number(x.paid_usd||0),0);
       $("#stat-balance").textContent=money(balance);
+      renderFinance();
+      await refreshProjectRequests();
+    }else if(role()==="client"){
+      await refreshProjectRequests();
       renderFinance();
     }
     renderProjects(); renderOverview();
@@ -232,9 +239,12 @@
     $("#activity-list").innerHTML=entries.map(x=>'<article class="activity-entry"><span class="activity-dot '+safe(x.activity_type)+'"></span><div><strong>'+safe(x.message)+'</strong><p>'+(x.entry_kind==="feedback"?(role()==="client"?"Submitted by you":"Submitted by client"):role()==="client"?"Project update":safe(x.actor_name||"Team member"))+' · '+new Date(x.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</p></div></article>').join("")||'<p class="empty">No activity recorded yet.</p>';
   }
   function renderFinance(){
-    if(!isAdmin()) return;
+    const clientView=role()==="client";
+    $("#finance-subtitle").textContent=clientView?"View quotes, payments and balances for your projects.":"Track quotes, payments and outstanding balances.";
     const rows=projects.map(p=>{const f=finances.find(x=>x.project_id===p.id)||{quote_usd:0,paid_usd:0};return {p,f,balance:Number(f.quote_usd||0)-Number(f.paid_usd||0)};});
-    $("#finance-table").innerHTML=rows.map(({p,f,balance})=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td><td>'+safe(p.clients?.name||"—")+'</td><td>'+money(f.quote_usd)+'</td><td>'+money(f.paid_usd)+'</td><td><strong>'+money(balance)+'</strong></td><td><button class="btn secondary finance-edit" data-id="'+p.id+'" type="button">Quote</button> <button class="btn secondary payment-add" data-id="'+p.id+'" type="button">Add payment</button> <button class="btn secondary payment-history" data-id="'+p.id+'" type="button">History</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No projects to show.</td></tr>';
+    $("#finance-table").innerHTML=rows.map(({p,f,balance})=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td>'+(clientView?'':'<td>'+safe(p.clients?.name||"—")+'</td>')+'<td>'+money(f.quote_usd)+'</td><td>'+money(f.paid_usd)+'</td><td><strong>'+money(balance)+'</strong></td><td>'+(clientView?'<button class="btn secondary payment-history" data-id="'+p.id+'" type="button">Payment history</button>':'<button class="btn secondary finance-edit" data-id="'+p.id+'" type="button">Quote</button> <button class="btn secondary payment-add" data-id="'+p.id+'" type="button">Add payment</button> <button class="btn secondary payment-history" data-id="'+p.id+'" type="button">History</button>')+'</td></tr>').join("")||'<tr><td colspan="6" class="empty">No projects to show.</td></tr>';
+    const heads=clientView?["PROJECT","QUOTE (USD)","PAID (USD)","OUTSTANDING","PAYMENTS"]:["PROJECT","CLIENT","QUOTE (USD)","PAID (USD)","OUTSTANDING","ACTION"];
+    $("#finance-table").closest("table").querySelector("thead").innerHTML="<tr>"+heads.map(x=>"<th>"+x+"</th>").join("")+"</tr>";
     $$(".finance-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const f=finances.find(x=>x.project_id===btn.dataset.id)||{quote_usd:0};
       const form=$("#finance-form");form.project_id.value=btn.dataset.id;form.quote_usd.value=f.quote_usd||0;
@@ -264,7 +274,32 @@
     $("#payments-history-summary").textContent=rows.length+" payment record"+(rows.length===1?"":"s")+" · "+money(total)+" received";
     $("#payments-history-list").innerHTML=rows.map(x=>'<article class="activity-entry"><span class="activity-dot project_created"></span><div><strong>'+money(x.amount_usd)+' · '+safe(x.payment_method)+'</strong><p>'+date(x.payment_date)+' · '+safe(x.reference||"No reference")+(x.notes?" · "+safe(x.notes):"")+'</p></div></article>').join("")||'<p class="empty">No payments recorded yet.</p>';
   }
-    function renderClients(){
+    async function refreshProjectRequests(){
+    const {data,error}=await db.from("project_requests").select("id,client_id,project_name,service,quantity,property_address,preferred_due_date,brief,status,created_at,clients(name)").order("created_at",{ascending:false});
+    if(error){console.error("FrameCrest project requests:",error);toast("Could not load project requests: "+error.message);return;}
+    projectRequests=data||[];renderProjectRequests();
+  }
+  function renderProjectRequests(){
+    if(role()==="client"){
+      $("#client-requests-table").innerHTML=projectRequests.map(r=>'<tr><td><strong>'+safe(r.project_name)+'</strong></td><td>'+safe(r.service)+'</td><td>'+r.quantity+'</td><td>'+date(String(r.created_at).slice(0,10))+'</td><td><span class="status '+statusClass(r.status)+'">'+safe(r.status)+'</span></td></tr>').join("")||'<tr><td colspan="5" class="empty">You have not submitted any requests yet.</td></tr>';
+    }
+    if(isAdmin()){
+      $("#requests-table").innerHTML=projectRequests.map(r=>'<tr><td>'+safe(r.clients?.name||"Client")+'</td><td><strong>'+safe(r.project_name)+'</strong><small class="subline">'+safe(r.property_address||"No property address")+'</small></td><td>'+safe(r.service)+'</td><td>'+r.quantity+'</td><td>'+date(r.preferred_due_date)+'</td><td><button class="btn secondary request-details" data-id="'+r.id+'" type="button">View brief</button></td><td><select class="inline-select request-status" data-id="'+r.id+'">'+["Submitted","Under review","Approved","Declined"].map(x=>'<option '+(x===r.status?'selected':'')+'>'+x+'</option>').join("")+'</select></td></tr>').join("")||'<tr><td colspan="7" class="empty">No project requests received yet.</td></tr>';
+      $(".request-status").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("project_requests").update({status:el.value,reviewed_at:new Date().toISOString()}).eq("id",el.dataset.id);if(error){toast("Could not update request: "+error.message);return;}toast("Request status updated.");await refreshProjectRequests();}));
+      $(".request-details").forEach(btn=>btn.addEventListener("click",()=>{const r=projectRequests.find(x=>x.id===btn.dataset.id);if(!r)return;window.alert("Project: "+r.project_name+"\nClient: "+(r.clients?.name||"")+"\nService: "+r.service+"\nQuantity: "+r.quantity+"\nProperty: "+(r.property_address||"Not supplied")+"\nPreferred deadline: "+(r.preferred_due_date||"Not supplied")+"\n\nBrief:\n"+(r.brief||"No additional instructions."));}));
+    }
+  }
+  $("#client-request-form").addEventListener("submit",async e=>{
+    e.preventDefault();if(role()!=="client"||!profile.client_id){$("#client-request-message").textContent="Your account is not linked to a client record. Please contact FrameCrest.";return;}
+    const form=e.currentTarget,submit=form.querySelector('button[type="submit"]'),raw=Object.fromEntries(new FormData(form).entries());
+    const payload={client_id:profile.client_id,project_name:String(raw.project_name||"").trim(),service:raw.service,quantity:Number(raw.quantity),preferred_due_date:raw.preferred_due_date||null,property_address:String(raw.property_address||"").trim()||null,brief:String(raw.brief||"").trim()||null};
+    submit.disabled=true;submit.textContent="Submitting…";$("#client-request-message").textContent="Sending your request…";
+    const {error}=await db.from("project_requests").insert(payload);
+    if(error){$("#client-request-message").textContent="Could not submit request: "+error.message;}
+    else{form.reset();form.elements.quantity.value=1;$("#client-request-message").textContent="Your request has been sent to FrameCrest for review.";toast("Project request submitted.");await refreshProjectRequests();}
+    submit.disabled=false;submit.textContent="Submit project request";
+  });
+  function renderClients(){
     $("#clients-table").innerHTML=clients.map(c=>'<tr><td><strong>'+safe(c.name)+'</strong></td><td>'+safe(c.contact_name||"—")+'</td><td>'+safe(c.email||"—")+'</td><td>'+safe(c.location||"—")+'</td><td>'+projects.filter(p=>p.client_id===c.id).length+'</td><td><button class="btn secondary client-edit" data-id="'+c.id+'" type="button">Edit</button> <button class="btn secondary client-delete" data-id="'+c.id+'" type="button">Delete</button></td></tr>').join("")||'<tr><td colspan="6" class="empty">No clients added yet.</td></tr>';
     $$(".client-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const c=clients.find(x=>x.id===btn.dataset.id);if(!c)return;
@@ -303,7 +338,7 @@
     $$(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
     $("#page-title").textContent=view==="team"?"Team directory":view.charAt(0).toUpperCase()+view.slice(1);
   }
-  $$(".nav-item").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
+  $(".nav-item").forEach(b=>b.addEventListener("click",()=>{setView(b.dataset.view);if(b.dataset.view==="finance")renderFinance();}));
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
   $("#project-search").addEventListener("input",renderProjects);
   function resetProjectForm(){
