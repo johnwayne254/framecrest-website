@@ -39,3 +39,16 @@ using (
 );
 
 grant select, insert, update, delete on public.project_invoices to authenticated;
+
+-- Clients can see payment records for their own projects, but cannot add or change them.
+drop policy if exists "clients read own project payments" on public.project_payments;
+create policy "clients read own project payments" on public.project_payments
+for select to authenticated
+using (
+  public.current_role() = 'client'
+  and exists (
+    select 1 from public.projects p
+    where p.id = project_payments.project_id
+      and p.client_id = public.current_client_id()
+  )
+);
