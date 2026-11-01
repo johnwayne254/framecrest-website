@@ -153,6 +153,47 @@
   $("#report-start-date").addEventListener("change",renderReportWorkspace);
   $("#report-end-date").addEventListener("change",renderReportWorkspace);
   $("#report-reset-dates").addEventListener("click",()=>{$("#report-start-date").value="";$("#report-end-date").value="";renderReportWorkspace();});
+  function reportExportRows(){
+    const output=$("#report-workspace .report-output"),rows=[];
+    if(!output||!$("#report-category").value)throw new Error("Choose a report category first.");
+    output.querySelectorAll("table").forEach((table,index)=>{
+      if(index)rows.push([]);
+      table.querySelectorAll("tr").forEach(tr=>rows.push([...tr.querySelectorAll("th,td")].map(cell=>cell.innerText.trim())));
+    });
+    if(!rows.length){
+      output.querySelectorAll(".stat-card").forEach(card=>rows.push([card.querySelector("span")?.innerText||"Metric",card.querySelector("strong")?.innerText||""]));
+    }
+    if(!rows.length)throw new Error("There is no report data to export for this category.");
+    return rows;
+  }
+  function reportFileName(ext){
+    const category=$("#report-category").selectedOptions[0]?.textContent||"Report";
+    const start=$("#report-start-date").value||"all-time",end=$("#report-end-date").value||"today";
+    return "FrameCrest-"+category.toLowerCase().replace(/[^a-z0-9]+/g,"-")+"-"+start+"-to-"+end+"."+ext;
+  }
+  function downloadReport(blob,name){
+    const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);
+  }
+  $("#report-export-csv").addEventListener("click",()=>{
+    try{const csv=reportExportRows().map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");downloadReport(new Blob(["\\uFEFF"+csv],{type:"text/csv;charset=utf-8"}),reportFileName("csv"));toast("CSV report exported.");}
+    catch(e){toast(e.message);}
+  });
+  $("#report-export-excel").addEventListener("click",()=>{
+    try{
+      const rows=reportExportRows(),esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+      const xml='<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Report"><Table>'+rows.map(row=>"<Row>"+row.map(v=>'<Cell><Data ss:Type="String">'+esc(v)+'</Data></Cell>').join("")+"</Row>").join("")+"</Table></Worksheet></Workbook>";
+      downloadReport(new Blob([xml],{type:"application/vnd.ms-excel"}),reportFileName("xls"));toast("Excel-compatible report exported.");
+    }catch(e){toast(e.message);}
+  });
+  $("#report-export-pdf").addEventListener("click",()=>{
+    try{
+      if(!$("#report-category").value)throw new Error("Choose a report category first.");
+      const title=$("#report-title").textContent,period=$("#report-period-label").textContent,content=$("#report-workspace .report-output").innerHTML;
+      const w=window.open("","_blank");if(!w)throw new Error("Please allow pop-ups to print or save the report.");
+      w.document.write('<!doctype html><html><head><title>'+safe(title)+'</title><style>body{font:13px Arial,sans-serif;color:#263746;padding:32px}h1{color:#14283F}p{color:#78858E}table{border-collapse:collapse;width:100%;margin:18px 0}th,td{text-align:left;border:1px solid #ddd;padding:9px;font-size:11px}th{background:#F4F2ED;color:#14283F}.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat-card{border:1px solid #ddd;padding:12px}.stat-card strong{display:block;font-size:20px;margin-top:8px}.finance-chart{margin:15px 0}.finance-bar-row{display:flex;justify-content:space-between;padding:7px;border-bottom:1px solid #eee}.finance-bar-track{display:none}.report-empty{padding:20px;border:1px solid #ddd}@media print{body{padding:0}}</style></head><body><h1>FrameCrest Studios</h1><p>REPORT · '+safe(period)+'</p><h2>'+safe(title)+'</h2>'+content+'</body></html>');
+      w.document.close();w.focus();w.print();toast("Print window opened. Choose Save as PDF.");
+    }catch(e){toast(e.message);}
+  });
   const role = () => profile?.role || "client";
   const isAdmin = () => role()==="admin";
   const statusClass = s => String(s||"").toLowerCase().replaceAll(" ","-");
