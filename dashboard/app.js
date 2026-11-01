@@ -663,7 +663,7 @@
       const productivity=maxDelivered>0?x.delivered/maxDelivered*100:null;
       const metrics=[[x.quality,35],[x.onTimeScore,25],[productivity,20],[x.revisionScore,10],[x.consistency,10]].filter(([value])=>value!==null&&Number.isFinite(value));
       const coverage=metrics.reduce((sum,item)=>sum+item[1],0);
-      const overall=coverage?metrics.reduce((sum,item)=>sum+item[0]*item[1],0)/coverage:null;
+      const overall=coverage>=50?metrics.reduce((sum,item)=>sum+item[0]*item[1],0)/coverage:null;
       return {...x,productivity,coverage,overall};
     }).sort((x,y)=>(y.overall??-1)-(x.overall??-1));
     const evaluated=rows.filter(x=>x.overall!==null);
@@ -678,12 +678,12 @@
       ["Projects delivered",String(totalDelivered)],
       ["On-time delivery",dueTotal?Math.round(onTimeTotal/dueTotal*100)+"%": "—"]
     ].map(([label,value])=>'<article class="stat-card"><span>'+safe(label)+'</span><strong>'+safe(value)+'</strong></article>').join("");
-    $("#performance-note").textContent="Balanced score: quality 35%, on-time delivery 25%, productivity 20%, revision avoidance 10%, consistency 10%. Missing metrics are excluded and the remaining weights are normalized. Productivity is relative to the highest editor delivery count in this period. Consistency uses recorded active weeks from the first observed production event. Tracking starts from the migration date; earlier activity is not reconstructed.";
+    $("#performance-note").textContent="Balanced score: quality 35%, on-time delivery 25%, productivity 20%, revision avoidance 10%, consistency 10%. Missing metrics are excluded and the remaining weights are normalized; an overall score is shown only when at least 50% of the score weight has usable data. Productivity is relative to the highest editor delivery count in this period. Consistency uses recorded active weeks from the first observed production event. Tracking starts from the migration date; earlier activity is not reconstructed.";
     host.innerHTML=rows.map(x=>{
       const canOpenHistory=team.some(m=>m.id===x.editor.id);
       const name=(canOpenHistory?'<button class="team-name-link performance-editor-link" data-id="'+x.editor.id+'" type="button">'+safe(x.editor.full_name||"Unnamed editor")+'</button>':'<strong>'+safe(x.editor.full_name||"Former editor")+'</strong>')+(x.editor.is_active===false?'<small class="performance-detail">Disabled or former account</small>':"");
       const overall=x.overall===null?"—":Math.round(x.overall)+"/100";
-      const coverage=x.coverage?'<small class="performance-detail">'+x.coverage+'% weight coverage</small>':'<small class="performance-detail">No recorded data</small>';
+      const coverage=x.coverage>=50?'<small class="performance-detail">'+x.coverage+'% weight coverage</small>':'<small class="performance-detail">'+(x.coverage?"Insufficient data ("+x.coverage+"% coverage)":"No recorded data")+'</small>';
       return '<tr><td>'+name+'</td><td><strong>'+overall+'</strong>'+coverage+'</td><td>'+metricCell(x.quality,x.quality===null?"No reviews": "Average of "+x.reviews+" reviews")+'</td><td>'+metricCell(x.onTimeScore,x.dueCount?x.onTimeCount+" of "+x.dueCount+" due-dated deliveries on time":"No due-dated deliveries")+'</td><td>'+metricCell(x.productivity,x.delivered+" delivered; relative to team leader")+'</td><td>'+metricCell(x.revisionScore,x.submitted?x.revisions+" revision requests / "+x.submitted+" submissions":"No submissions recorded")+'</td><td>'+metricCell(x.consistency,x.consistency===null?"No production events":x.activeWeeks+" active weeks / "+x.weekCount+" weeks")+'</td><td>'+x.delivered+'</td></tr>';
     }).join("")||'<tr><td colspan="8" class="empty">No editor accounts are available.</td></tr>';
     $$(".performance-editor-link").forEach(button=>button.addEventListener("click",()=>openTeamHistory(button.dataset.id)));
