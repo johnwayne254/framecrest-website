@@ -402,7 +402,7 @@
     const raw=Object.fromEntries(new FormData(form).entries()),obj={name:String(raw.name||"").trim()};
     ["contact_name","email","phone","location","website"].forEach(k=>{const v=String(raw[k]||"").trim();if(v)obj[k]=v;});
     if(!obj.name){$("#client-message").textContent="Please enter a client or company name.";return;}
-    const editId=form.dataset.editId,requestId=form.dataset.requestId;submit.disabled=true;submit.textContent="Saving…";$("#client-message").textContent=editId?"Updating client…":"Saving client…";
+    const editId=form.dataset.editId;submit.disabled=true;submit.textContent="Saving…";$("#client-message").textContent=editId?"Updating client…":"Saving client…";
     try{
       const result=editId?await db.from("clients").update(obj).eq("id",editId).select("*").single():await db.from("clients").insert(obj).select("*").single();
       if(result.error)throw result.error;
@@ -417,8 +417,8 @@
     const f=Object.fromEntries(new FormData(form).entries());
     const quote=Number(f.quote_usd);if(!Number.isFinite(quote)||quote<=0){$("#project-message").textContent="Enter an agreed project quote greater than zero.";return;}
     const obj={name:String(f.name||"").trim(),client_id:f.client_id,service:f.service,quantity:Number(f.quantity),due_date:f.due_date||null,editor_id:f.editor_id||null,qa_id:f.qa_id||null,brief:String(f.brief||"").trim()||null,folder_url:String(f.folder_url||"").trim()||null};
-    const editId=form.dataset.editId;submit.disabled=true;submit.textContent="Saving…";
-    $("#project-message").textContent=editId?"Updating project…":"Creating project…";
+    const editId=form.dataset.editId,requestId=form.dataset.requestId;submit.disabled=true;submit.textContent="Saving…";
+    $("#project-message").textContent=editId?"Updating project…":requestId?"Approving request and creating project…":"Creating project…";
     try{
       const result=editId
         ?await db.from("projects").update(obj).eq("id",editId).select("id").single()
