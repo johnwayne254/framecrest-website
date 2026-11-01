@@ -285,9 +285,21 @@
       $("#client-requests-table").innerHTML=projectRequests.map(r=>'<tr><td><strong>'+safe(r.project_name)+'</strong></td><td>'+safe(r.service)+'</td><td>'+r.quantity+'</td><td>'+date(String(r.created_at).slice(0,10))+'</td><td><span class="status '+statusClass(r.status)+'">'+safe(r.status)+'</span></td></tr>').join("")||'<tr><td colspan="5" class="empty">You have not submitted any requests yet.</td></tr>';
     }
     if(isAdmin()){
-      $("#requests-table").innerHTML=projectRequests.map(r=>'<tr><td>'+safe(r.clients?.name||"Client")+'</td><td><strong>'+safe(r.project_name)+'</strong><small class="subline">'+safe(r.property_address||"No property address")+'</small></td><td>'+safe(r.service)+'</td><td>'+r.quantity+'</td><td>'+date(r.preferred_due_date)+'</td><td><button class="btn secondary request-details" data-id="'+r.id+'" type="button">View brief</button></td><td><select class="inline-select request-status" data-id="'+r.id+'">'+["Submitted","Under review","Approved","Declined"].map(x=>'<option '+(x===r.status?'selected':'')+'>'+x+'</option>').join("")+'</select></td></tr>').join("")||'<tr><td colspan="7" class="empty">No project requests received yet.</td></tr>';
+      $("#requests-table").innerHTML=projectRequests.map(r=>'<tr><td>'+safe(r.clients?.name||"Client")+'</td><td><strong>'+safe(r.project_name)+'</strong><small class="subline">'+safe(r.property_address||"No property address")+'</small></td><td>'+safe(r.service)+'</td><td>'+r.quantity+'</td><td>'+date(r.preferred_due_date)+'</td><td><button class="btn secondary request-details" data-id="'+r.id+'" type="button">View brief</button></td><td><select class="inline-select request-status" data-id="'+r.id+'">'+["Submitted","Under review","Approved","Declined"].map(x=>'<option '+(x===r.status?'selected':'')+'>'+x+'</option>').join("")+'</select></td><td>'+(r.status==="Approved"?'<span class="muted">Project created</span>':r.status==="Declined"?'—':'<button class="btn primary request-create" data-id="'+r.id+'" type="button">Review & create</button>')+'</td></tr>').join("")||'<tr><td colspan="8" class="empty">No project requests received yet.</td></tr>';
       $$(".request-status").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("project_requests").update({status:el.value,reviewed_at:new Date().toISOString()}).eq("id",el.dataset.id);if(error){toast("Could not update request: "+error.message);return;}toast("Request status updated.");await refreshProjectRequests();}));
       $$(".request-details").forEach(btn=>btn.addEventListener("click",()=>{const r=projectRequests.find(x=>x.id===btn.dataset.id);if(!r)return;window.alert("Project: "+r.project_name+"\nClient: "+(r.clients?.name||"")+"\nService: "+r.service+"\nQuantity: "+r.quantity+"\nProperty: "+(r.property_address||"Not supplied")+"\nPreferred deadline: "+(r.preferred_due_date||"Not supplied")+"\n\nBrief:\n"+(r.brief||"No additional instructions."));}));
+      $$(".request-create").forEach(btn=>btn.addEventListener("click",()=>{
+        const r=projectRequests.find(x=>x.id===btn.dataset.id);if(!r)return;
+        const form=$("#project-form");resetProjectForm();form.dataset.requestId=r.id;
+        form.elements.name.value=r.project_name;form.elements.client_id.value=r.client_id;
+        form.elements.service.value=r.service;form.elements.quantity.value=r.quantity;
+        form.elements.due_date.value=r.preferred_due_date||"";
+        form.elements.brief.value=(r.property_address?"Property: "+r.property_address+"\n\n":"")+(r.brief||"");
+        $("#project-modal h2").textContent="Approve & create project";
+        $("#project-modal .eyebrow").textContent="CLIENT REQUEST REVIEW";
+        form.querySelector('button[type="submit"]').textContent="Approve & create project";
+        $("#project-modal").classList.remove("hidden");
+      }));
     }
   }
   $("#client-request-form").addEventListener("submit",async e=>{
@@ -336,14 +348,14 @@
   }
   function setView(view){
     $$(".view").forEach(el=>el.classList.add("hidden")); $("#"+view+"-view").classList.remove("hidden");
-    $$$(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
+    $(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
     $("#page-title").textContent=view==="team"?"Team directory":view.charAt(0).toUpperCase()+view.slice(1);
   }
   $$(".nav-item").forEach(b=>b.addEventListener("click",()=>{setView(b.dataset.view);if(b.dataset.view==="finance")renderFinance();}));
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
   $("#project-search").addEventListener("input",renderProjects);
   function resetProjectForm(){
-    const form=$("#project-form");form.reset();delete form.dataset.editId;
+    const form=$("#project-form");form.reset();delete form.dataset.editId;delete form.dataset.requestId;
     $("#project-modal h2").textContent="Create a project";
     $("#project-modal .eyebrow").textContent="PROJECT INTAKE";
     form.querySelector('button[type="submit"]').textContent="Create project";
@@ -390,7 +402,7 @@
     const raw=Object.fromEntries(new FormData(form).entries()),obj={name:String(raw.name||"").trim()};
     ["contact_name","email","phone","location","website"].forEach(k=>{const v=String(raw[k]||"").trim();if(v)obj[k]=v;});
     if(!obj.name){$("#client-message").textContent="Please enter a client or company name.";return;}
-    const editId=form.dataset.editId;submit.disabled=true;submit.textContent="Saving…";$("#client-message").textContent=editId?"Updating client…":"Saving client…";
+    const editId=form.dataset.editId,requestId=form.dataset.requestId;submit.disabled=true;submit.textContent="Saving…";$("#client-message").textContent=editId?"Updating client…":"Saving client…";
     try{
       const result=editId?await db.from("clients").update(obj).eq("id",editId).select("*").single():await db.from("clients").insert(obj).select("*").single();
       if(result.error)throw result.error;
@@ -403,6 +415,7 @@
     e.preventDefault();const form=e.currentTarget,submit=form.querySelector('button[type="submit"]');
     if(submit.disabled)return;
     const f=Object.fromEntries(new FormData(form).entries());
+    const quote=Number(f.quote_usd);if(!Number.isFinite(quote)||quote<=0){$("#project-message").textContent="Enter an agreed project quote greater than zero.";return;}
     const obj={name:String(f.name||"").trim(),client_id:f.client_id,service:f.service,quantity:Number(f.quantity),due_date:f.due_date||null,editor_id:f.editor_id||null,qa_id:f.qa_id||null,brief:String(f.brief||"").trim()||null,folder_url:String(f.folder_url||"").trim()||null};
     const editId=form.dataset.editId;submit.disabled=true;submit.textContent="Saving…";
     $("#project-message").textContent=editId?"Updating project…":"Creating project…";
@@ -411,8 +424,12 @@
         ?await db.from("projects").update(obj).eq("id",editId).select("id").single()
         :await db.from("projects").insert({...obj,status:"Awaiting files",qa_status:"Not started"}).select("id").single();
       if(result.error)throw result.error;
+      const projectId=result.data.id;
+      const {error:financeError}=await db.from("project_financials").upsert({project_id:projectId,quote_usd:quote,updated_at:new Date().toISOString()},{onConflict:"project_id"});
+      if(financeError)throw financeError;
+      if(requestId){const {error:requestError}=await db.from("project_requests").update({status:"Approved",reviewed_at:new Date().toISOString()}).eq("id",requestId);if(requestError)throw requestError;}
       resetProjectForm();$("#project-modal").classList.add("hidden");
-      toast(editId?"Project details updated.":"Project created.");await refresh();
+      toast(editId?"Project details updated.":requestId?"Request approved and project created.":"Project created.");await refresh();
     }catch(err){$("#project-message").textContent="Could not save project: "+(err.message||"Please try again.");}
     finally{submit.disabled=false;submit.textContent=form.dataset.editId?"Save changes":"Create project";}
   });
