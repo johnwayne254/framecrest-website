@@ -516,13 +516,15 @@
       const project='<td><strong>'+safe(p.project_code||"—")+'</strong><small class="subline">'+safe(p.name)+'</small></td>';
       const status='<td><span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span></td>';
       const qa='<td><span class="status '+statusClass(p.qa_status)+'">'+safe(p.qa_status||"Not started")+'</span></td>';
-      const actions='<td><button class="btn secondary project-details" data-id="'+p.id+'" type="button">View details</button> <button class="btn secondary project-activity" data-id="'+p.id+'" type="button">Updates</button></td>';
+      const reviewButton=(isAdmin()||role()==="qa")&&p.editor_id?'<button class="btn secondary project-review" data-id="'+p.id+'" type="button">Score editor</button> ':"";
+      const actions='<td>'+reviewButton+'<button class="btn secondary project-details" data-id="'+p.id+'" type="button">View details</button> <button class="btn secondary project-activity" data-id="'+p.id+'" type="button">Updates</button></td>';
       if(clientView)return '<tr>'+project+'<td>'+safe(p.service)+'</td><td>'+date(p.due_date)+'</td>'+status+qa+actions+'</tr>';
       return '<tr>'+project+'<td>'+safe(p.clients?.name||"—")+'</td><td>'+safe(p.service)+'</td><td>'+safe(p.profiles?.full_name||"Unassigned")+'</td><td>'+safe(p.qa_profile?.full_name||"Unassigned")+'</td><td>'+date(p.due_date)+'</td><td>'+(isAdmin()||role()==="editor" ? '<select class="inline-select status-change" data-id="'+p.id+'">'+allowedStatuses.map(x=>'<option '+(x===p.status?'selected':'')+'>'+x+'</option>').join("")+'</select>' : status.slice(4,-5))+'</td><td>'+(isAdmin()||role()==="qa"?'<select class="inline-select qa-change" data-id="'+p.id+'">'+["Not started","Pending review","Passed","Changes required"].map(x=>'<option '+(x===p.qa_status?'selected':'')+'>'+x+'</option>').join("")+'</select>':qa.slice(4,-5))+'</td><td>'+(isAdmin()?'<button class="btn secondary project-edit" data-id="'+p.id+'" type="button">Edit</button> ':'')+'<button class="btn secondary project-details" data-id="'+p.id+'" type="button">Details</button> <button class="btn secondary project-activity" data-id="'+p.id+'" type="button">Activity</button></td></tr>';
     }).join("")||'<tr><td colspan="'+(clientView?6:9)+'" class="empty">No matching projects.</td></tr>';
     $$(".status-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("Project status updated.");await refresh();}}));
     $$(".qa-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({qa_status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("QA status updated.");await refresh();}}));
-    $$(".project-details").forEach(btn=>btn.addEventListener("click",()=>openProjectDetails(btn.dataset.id)));
+    $(".project-review").forEach(btn=>btn.addEventListener("click",()=>openEditorReview(btn.dataset.id)));
+    $(".project-details").forEach(btn=>btn.addEventListener("click",()=>openProjectDetails(btn.dataset.id)));
     $$(".project-activity").forEach(btn=>btn.addEventListener("click",()=>openProjectActivity(btn.dataset.id)));
     $$(".project-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const p=projects.find(x=>x.id===btn.dataset.id);if(!p)return;
