@@ -84,9 +84,9 @@
   const form = document.getElementById("contact-form");
   const status = document.getElementById("form-status");
   const submitButton = form?.querySelector('button[type="submit"]');
-  const formEmailIsValid = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formSubmitEmail);
+  const formEmailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formSubmitEmail);
   const formSubmitEndpoint = formEmailIsValid
-    ? "https://formsubmit.co/ajax/" + encodeURIComponent(formSubmitEmail)
+    ? "https://formsubmit.co/ajax/" + formSubmitEmail
     : "";
 
   if (form && submitButton) {
@@ -136,7 +136,7 @@
       } catch (_) {
         result = {};
       }
-      if (!response.ok || result.success === false) {
+      if (!response.ok || String(result.success).toLowerCase() === "false") {
         throw new Error(result.message || "The form service returned an error.");
       }
 
