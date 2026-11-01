@@ -445,7 +445,7 @@
       icon.textContent=item.icon;
       let meter=card.querySelector(".overview-meter");
       if(!meter){meter=document.createElement("div");meter.className="overview-meter";meter.innerHTML="<i></i>";card.append(meter);}
-      const ratio=index===3&&role()!=="client"?Math.min(100,Math.max(0,quoted>0?item.value/quoted*100:0)):Math.min(100,item.value/total*100);
+      const ratio=index===3&&role()!=="client"?Math.min(100,Math.max(0,finances.reduce((sum,x)=>sum+Number(x.quote_usd||0),0)>0?item.value/finances.reduce((sum,x)=>sum+Number(x.quote_usd||0),0)*100:0)):Math.min(100,item.value/total*100);
       meter.querySelector("i").style.width=ratio+"%";
     });
     $("#recent-projects").innerHTML=projects.slice(0,6).map(projectRow).join("")||'<tr><td colspan="4" class="empty">No projects yet.</td></tr>';
