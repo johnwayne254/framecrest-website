@@ -3,7 +3,7 @@
   const configured = cfg.supabaseUrl && cfg.supabaseAnonKey && !cfg.supabaseUrl.includes("YOUR_") && !cfg.supabaseAnonKey.includes("YOUR_");
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
-  let db, user, profile, projects = [], clients = [], editors = [], qaReviewers = [], finances = [], team = [], projectRequests = [], inboxRows = [];
+  let db, user, profile, projects = [], clients = [], editors = [], qaReviewers = [], finances = [], team = [], projectRequests = [], inboxRows = [], paymentRecords = [], invoiceRecords = [];
   const money = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(Number(n||0));
   const safe = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const date = v => v ? new Date(v+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
@@ -131,7 +131,18 @@
       await refreshProjectRequests();
       renderFinance();
     }
-    renderProjects(); renderOverview(); await refreshMessageInbox();
+    renderProjects(); renderOverview();
+    const ids=projects.map(p=>p.id);
+    if(ids.length){
+      const [payResult,invoiceResult]=await Promise.all([
+        db.from("project_payments").select("id,project_id,amount_usd,payment_date,payment_method,reference,notes,created_at").in("project_id",ids).order("payment_date",{ascending:false}),
+        db.from("project_invoices").select("id,invoice_number,project_id,amount_usd,issue_date,due_date,status,notes,created_at").in("project_id",ids).order("issue_date",{ascending:false})
+      ]);
+      paymentRecords=payResult.data||[];invoiceRecords=invoiceResult.data||[];
+      if(payResult.error)console.error("FrameCrest finance report payments:",payResult.error);
+      if(invoiceResult.error)console.error("FrameCrest invoices:",invoiceResult.error);
+    }else{paymentRecords=[];invoiceRecords=[];}
+    renderFinance(); await refreshMessageInbox();
   }
   function renderOverview(){
     const active=projects.filter(p=>["Awaiting files","In progress","Revisions"].includes(p.status)).length;
@@ -320,27 +331,113 @@
     $("#activity-summary").textContent=(project.clients?.name||"Project")+" · "+revisions+" revision request"+(revisions===1?"":"s");
     $("#activity-list").innerHTML=entries.map(x=>'<article class="activity-entry"><span class="activity-dot '+safe(x.activity_type)+'"></span><div><strong>'+safe(x.message)+'</strong><p>'+(x.entry_kind==="feedback"?(role()==="client"?"Submitted by you":"Submitted by client"):role()==="client"?"Project update":safe(x.actor_name||"Team member"))+' · '+new Date(x.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</p></div></article>').join("")||'<p class="empty">No activity recorded yet.</p>';
   }
+  function financeRange(){
+    const period=$("#finance-period").value,raw=$("#finance-date").value||new Date().toISOString().slice(0,10),d=new Date(raw+"T12:00:00");
+    let from,to,label;
+    if(period==="day"){from=raw;to=raw;label="Daily · "+date(raw);}
+    else if(period==="year"){from=d.getFullYear()+"-01-01";to=d.getFullYear()+"-12-31";label="Yearly · "+d.getFullYear();}
+    else if(period==="all"){from="0001-01-01";to="9999-12-31";label="All time";}
+    else{from=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01";to=new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().slice(0,10);label="Monthly · "+d.toLocaleDateString("en-US",{month:"long",year:"numeric"});}
+    return {period,from,to,label};
+  }
+  function renderFinanceReport(){
+    const r=financeRange(),filtered=paymentRecords.filter(x=>x.payment_date>=r.from&&x.payment_date<=r.to);
+    const revenue=filtered.reduce((s,x)=>s+Number(x.amount_usd||0),0);
+    const quoted=projects.reduce((s,p)=>s+Number((finances.find(f=>f.project_id===p.id)||{}).quote_usd||0),0);
+    const paid=projects.reduce((s,p)=>s+Number((finances.find(f=>f.project_id===p.id)||{}).paid_usd||0),0);
+    const outstanding=Math.max(0,quoted-paid);
+    $("#finance-revenue").textContent=money(revenue);$("#finance-outstanding").textContent=money(outstanding);
+    $("#finance-quoted").textContent=money(quoted);$("#finance-collection").textContent=(quoted?Math.min(100,paid/quoted*100):0).toFixed(1)+"%";
+    $("#finance-range-label").textContent=r.label;$("#finance-payment-count").textContent=filtered.length+" payment"+(filtered.length===1?"":"s");
+    const groups=new Map();filtered.forEach(x=>{const key=x.payment_date.slice(0,7);groups.set(key,(groups.get(key)||0)+Number(x.amount_usd||0));});
+    const chartRows=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0])).slice(-12),max=Math.max(1,...chartRows.map(x=>x[1]));
+    $("#finance-chart-title").textContent=r.period==="day"?"Payments received today":r.period==="year"?"Monthly revenue":"Revenue by month";
+    $("#finance-chart").innerHTML=chartRows.length?chartRows.map(([key,value])=>'<div class="finance-bar-row"><span>'+safe(key)+'</span><div class="finance-bar-track"><i style="width:'+Math.max(2,value/max*100)+'%"></i></div><strong>'+money(value)+'</strong></div>').join(""):'<p class="empty">No payments recorded in this period yet.</p>';
+    return {range:r,payments:filtered,revenue,quoted,paid,outstanding};
+  }
   function renderFinance(){
     const clientView=role()==="client";
-    $("#finance-subtitle").textContent=clientView?"View quotes, payments and balances for your projects.":"Track quotes, payments and outstanding balances.";
+    $("#finance-subtitle").textContent=clientView?"Your project costs, payments, invoices and financial summaries.":"Studio revenue, outstanding balances, payment reports and client invoices.";
+    $("#invoice-create-open").classList.toggle("hidden",!isAdmin());
+    $("#finance-stats").classList.toggle("hidden",role()==="editor");
+    $("#finance-export").classList.toggle("hidden",role()==="editor");
+    $("#finance-period").addEventListener("change",renderFinanceReport);
+    $("#finance-date").addEventListener("change",renderFinanceReport);
     const rows=projects.map(p=>{const f=finances.find(x=>x.project_id===p.id)||{quote_usd:0,paid_usd:0};return {p,f,balance:Number(f.quote_usd||0)-Number(f.paid_usd||0)};});
     $("#finance-table").innerHTML=rows.map(({p,f,balance})=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td>'+(clientView?'':'<td>'+safe(p.clients?.name||"—")+'</td>')+'<td>'+money(f.quote_usd)+'</td><td>'+money(f.paid_usd)+'</td><td><strong>'+money(balance)+'</strong></td><td>'+(clientView?'<button class="btn secondary payment-history" data-id="'+p.id+'" type="button">Payment history</button>':'<button class="btn secondary finance-edit" data-id="'+p.id+'" type="button">Quote</button> <button class="btn secondary payment-add" data-id="'+p.id+'" type="button">Add payment</button> <button class="btn secondary payment-history" data-id="'+p.id+'" type="button">History</button>')+'</td></tr>').join("")||'<tr><td colspan="6" class="empty">No projects to show.</td></tr>';
     const heads=clientView?["PROJECT","QUOTE (USD)","PAID (USD)","OUTSTANDING","PAYMENTS"]:["PROJECT","CLIENT","QUOTE (USD)","PAID (USD)","OUTSTANDING","ACTION"];
     $("#finance-table").closest("table").querySelector("thead").innerHTML="<tr>"+heads.map(x=>"<th>"+x+"</th>").join("")+"</tr>";
     $$(".finance-edit").forEach(btn=>btn.addEventListener("click",()=>{
       const f=finances.find(x=>x.project_id===btn.dataset.id)||{quote_usd:0};
-      const form=$("#finance-form");form.project_id.value=btn.dataset.id;form.quote_usd.value=f.quote_usd||0;
-      $("#finance-modal").classList.remove("hidden");
+      const form=$("#finance-form");form.project_id.value=btn.dataset.id;form.quote_usd.value=f.quote_usd||0;$("#finance-modal").classList.remove("hidden");
     }));
     $$(".payment-add").forEach(btn=>btn.addEventListener("click",()=>{
       const p=projects.find(x=>x.id===btn.dataset.id);if(!p)return;
-      const form=$("#payment-form");form.reset();form.project_id.value=p.id;
-      form.payment_date.value=new Date().toISOString().slice(0,10);
-      $("#payment-title").textContent="Add payment · "+p.project_code;
-      $("#payment-message").textContent="";$("#payment-modal").classList.remove("hidden");
+      const form=$("#payment-form");form.reset();form.project_id.value=p.id;form.payment_date.value=new Date().toISOString().slice(0,10);
+      $("#payment-title").textContent="Add payment · "+p.project_code;$("#payment-message").textContent="";$("#payment-modal").classList.remove("hidden");
     }));
     $$(".payment-history").forEach(btn=>btn.addEventListener("click",()=>openPaymentHistory(btn.dataset.id)));
+    renderFinanceReport();renderInvoices();
   }
+  function renderInvoices(){
+    $("#invoice-summary").textContent=invoiceRecords.length+" invoice"+(invoiceRecords.length===1?"":"s");
+    $("#invoices-table").innerHTML=invoiceRecords.map(inv=>{
+      const p=projects.find(x=>x.id===inv.project_id);
+      const overdue=inv.status==="Issued"&&inv.due_date<new Date().toISOString().slice(0,10);
+      return '<tr><td><strong>'+safe(inv.invoice_number)+'</strong></td><td>'+safe(p?.project_code||"Project")+' · '+safe(p?.name||"")+'</td><td>'+date(inv.issue_date)+'</td><td>'+date(inv.due_date)+(overdue?' <span class="status changes-required">Overdue</span>':'')+'</td><td>'+money(inv.amount_usd)+'</td><td><span class="status '+(inv.status==="Paid"?"delivered":inv.status==="Void"?"cancelled":"in-progress")+'">'+safe(inv.status)+'</span></td><td><button class="btn secondary invoice-view" data-id="'+inv.id+'" type="button">View</button>'+(isAdmin()&&inv.status==="Issued"?' <button class="btn secondary invoice-paid" data-id="'+inv.id+'" type="button">Mark paid</button> <button class="btn secondary invoice-void" data-id="'+inv.id+'" type="button">Void</button>':'')+'</td></tr>';
+    }).join("")||'<tr><td colspan="7" class="empty">No invoices have been issued yet.</td></tr>';
+    $$(".invoice-view").forEach(b=>b.addEventListener("click",()=>previewInvoice(b.dataset.id)));
+    $$(".invoice-paid").forEach(b=>b.addEventListener("click",()=>updateInvoiceStatus(b.dataset.id,"Paid")));
+    $$(".invoice-void").forEach(b=>b.addEventListener("click",()=>updateInvoiceStatus(b.dataset.id,"Void")));
+    const select=$("#invoice-project");select.innerHTML=projects.map(p=>'<option value="'+p.id+'">'+safe(p.project_code)+' · '+safe(p.name)+' — '+safe(p.clients?.name||"Client")+'</option>').join("");
+  }
+  async function updateInvoiceStatus(id,status){
+    if(!isAdmin())return;
+    const {error}=await db.from("project_invoices").update({status,updated_at:new Date().toISOString()}).eq("id",id);
+    if(error){toast("Could not update invoice: "+error.message);return;}
+    toast("Invoice marked "+status.toLowerCase()+".");await refresh();
+  }
+  function invoiceMarkup(inv){
+    const p=projects.find(x=>x.id===inv.project_id),client=p?.clients?.name||"Client";
+    return '<div class="invoice-paper"><div class="invoice-brand"><strong>FRAMECREST STUDIOS</strong><span>Every Property Deserves a Better Frame.</span></div><div class="invoice-heading"><h1>INVOICE</h1><strong>'+safe(inv.invoice_number)+'</strong></div><div class="invoice-meta"><div><small>BILL TO</small><strong>'+safe(client)+'</strong><span>'+safe(p?.name||"Project")+'</span></div><div><small>ISSUE DATE</small><strong>'+date(inv.issue_date)+'</strong><small>DUE DATE</small><strong>'+date(inv.due_date)+'</strong></div></div><div class="invoice-line"><span>'+safe(p?.service||"Creative production services")+' · '+safe(p?.name||"Project")+'</span><strong>'+money(inv.amount_usd)+'</strong></div><div class="invoice-total"><span>Total due</span><strong>'+money(inv.amount_usd)+'</strong></div><p class="invoice-notes">'+safe(inv.notes||"Thank you for choosing FrameCrest Studios.")+'</p><p class="invoice-footer">FrameCrest Studios · Every Property Deserves a Better Frame.</p></div>';
+  }
+  function previewInvoice(id){
+    const inv=invoiceRecords.find(x=>x.id===id);if(!inv)return;
+    $("#invoice-preview-title").textContent=inv.invoice_number;$("#invoice-preview-content").innerHTML=invoiceMarkup(inv);
+    $("#invoice-print").dataset.id=id;$("#invoice-preview-modal").classList.remove("hidden");
+  }
+  $("#invoice-print").addEventListener("click",()=>{
+    const inv=invoiceRecords.find(x=>x.id===$("#invoice-print").dataset.id);if(!inv)return;
+    const w=window.open("","_blank");if(!w){toast("Allow pop-ups to print this invoice.");return;}
+    w.document.write('<!doctype html><html><head><title>'+safe(inv.invoice_number)+'</title><style>body{font-family:Arial,sans-serif;color:#14283f;padding:40px}.invoice-paper{max-width:760px;margin:auto}.invoice-brand strong{display:block;letter-spacing:3px}.invoice-brand span,.invoice-meta small{color:#78909c;font-size:12px}.invoice-heading{display:flex;justify-content:space-between;margin:55px 0 35px}.invoice-heading h1{font-size:32px}.invoice-meta{display:flex;justify-content:space-between;margin-bottom:45px}.invoice-meta div{display:grid;gap:8px}.invoice-line,.invoice-total{display:flex;justify-content:space-between;padding:20px 0;border-bottom:1px solid #ddd}.invoice-total{font-size:22px}.invoice-notes{white-space:pre-wrap;margin-top:40px}.invoice-footer{margin-top:80px;color:#78909c;font-size:12px}</style></head><body>'+invoiceMarkup(inv)+'</body></html>');
+    w.document.close();w.focus();w.print();
+  });
+  $("#invoice-create-open").addEventListener("click",()=>{
+    if(!isAdmin())return;
+    const form=$("#invoice-form");form.reset();
+    const today=new Date().toISOString().slice(0,10);form.issue_date.value=today;form.due_date.value=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
+    form.invoice_number.value="FC-"+new Date().getFullYear()+"-"+String(invoiceRecords.length+1).padStart(3,"0");
+    const first=projects[0];if(first){form.project_id.value=first.id;const f=finances.find(x=>x.project_id===first.id)||{};form.amount_usd.value=Math.max(0,Number(f.quote_usd||0)-Number(f.paid_usd||0)).toFixed(2);}
+    $("#invoice-message").textContent="";$("#invoice-modal").classList.remove("hidden");
+  });
+  $("#invoice-project").addEventListener("change",e=>{
+    const f=finances.find(x=>x.project_id===e.target.value)||{};$("#invoice-form").amount_usd.value=Math.max(0,Number(f.quote_usd||0)-Number(f.paid_usd||0)).toFixed(2);
+  });
+  $("#invoice-form").addEventListener("submit",async e=>{
+    e.preventDefault();if(!isAdmin())return;
+    const form=e.currentTarget,f=Object.fromEntries(new FormData(form).entries());
+    if(f.due_date<f.issue_date){$("#invoice-message").textContent="Due date cannot be before the issue date.";return;}
+    const {error}=await db.from("project_invoices").insert({project_id:f.project_id,invoice_number:f.invoice_number.trim(),amount_usd:Number(f.amount_usd),issue_date:f.issue_date,due_date:f.due_date,status:"Issued",notes:f.notes.trim()||null,created_by:user.id});
+    if(error){$("#invoice-message").textContent=error.message;return;}
+    $("#invoice-modal").classList.add("hidden");toast("Invoice created.");await refresh();
+  });
+  $("#finance-export").addEventListener("click",()=>{
+    const report=renderFinanceReport(),lines=[["FrameCrest Studios Finance Report",report.range.label],["Revenue received",report.revenue],["Total quoted",report.quoted],["Total paid to date",report.paid],["Outstanding",report.outstanding],[],["Payment date","Project","Amount USD","Method","Reference"]];
+    report.payments.forEach(x=>{const p=projects.find(y=>y.id===x.project_id);lines.push([x.payment_date,p?.project_code||"",x.amount_usd,x.payment_method,x.reference||""]);});
+    const csv=lines.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download="framecrest-finance-"+report.range.from+"-to-"+report.range.to+".csv";a.click();URL.revokeObjectURL(url);
+  });
   async function openPaymentHistory(projectId){
     const p=projects.find(x=>x.id===projectId);if(!p)return;
     $("#payments-history-title").textContent=p.project_code+" · "+p.name;
