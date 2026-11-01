@@ -8,21 +8,19 @@
   const safe = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const date = v => v ? new Date(v+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
   const toast = msg => { const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),3200); };
-  let notificationChannel=null, notificationTimer=null, notificationTarget=null;
+  let notificationChannel=null, notificationTimer=null, notificationTarget=null, notificationAudioContext=null;
   const soundPreferenceKey="framecrest_notification_sound";
   function playNotificationSound(){
     if(!$("#notification-sound")?.checked)return;
     try{
-      const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-      if(!AudioContextClass)return;
-      const ctx=new AudioContextClass(),osc=ctx.createOscillator(),gain=ctx.createGain();
+      const ctx=notificationAudioContext;if(!ctx||ctx.state!=="running")return;
+      const osc=ctx.createOscillator(),gain=ctx.createGain();
       osc.type="sine";osc.frequency.setValueAtTime(740,ctx.currentTime);
       osc.frequency.setValueAtTime(980,ctx.currentTime+0.12);
       gain.gain.setValueAtTime(0.0001,ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.12,ctx.currentTime+0.025);
       gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.32);
       osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+0.34);
-      osc.onended=()=>ctx.close();
     }catch(e){console.warn("Notification sound unavailable",e);}
   }
   function showNotification(title,message,projectId=null,isMessage=false){
@@ -34,7 +32,8 @@
     playNotificationSound();
   }
   $("#notification-sound").checked=localStorage.getItem(soundPreferenceKey)==="on";
-  $("#notification-sound").addEventListener("change",e=>localStorage.setItem(soundPreferenceKey,e.target.checked?"on":"off"));
+  $("#notification-sound").addEventListener("change",e=>{localStorage.setItem(soundPreferenceKey,e.target.checked?"on":"off");if(e.target.checked){const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(AudioContextClass){notificationAudioContext=notificationAudioContext||new AudioContextClass();notificationAudioContext.resume();}}});
+  if($("#notification-sound").checked){$("#notification-sound").checked=false;localStorage.setItem(soundPreferenceKey,"off");}
   $("#notification-dismiss").addEventListener("click",()=>$("#notification-popup").classList.remove("show"));
   $("#notification-popup").addEventListener("click",e=>{
     if(e.target.id==="notification-dismiss"||!notificationTarget)return;
