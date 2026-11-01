@@ -66,6 +66,47 @@
       })
       .subscribe(status=>{if(status==="CHANNEL_ERROR"||status==="TIMED_OUT")console.warn("FrameCrest live notifications:",status);});
   }
+  const adminReportCategories=[
+    ["business","Business overview","Revenue trends, project growth and overall studio activity."],
+    ["financial","Financial reports","Payments received, invoices, quotes and outstanding balances."],
+    ["projects","Project reports","Project volumes, service mix, status and completion trends."],
+    ["clients","Client reports","New and repeat clients, account activity and client value."],
+    ["team","Team performance","Assignments, workload, completed work and QA activity."],
+    ["delivery","Delivery reports","On-time delivery, turnaround times and overdue projects."],
+    ["quality","Quality assurance","QA outcomes, approval rates and revision patterns."],
+    ["communication","Communication reports","Project messages, client feedback and response activity."],
+    ["profitability","Profitability reports","Revenue and direct production costs by project and service."]
+  ];
+  const clientReportCategories=[
+    ["account","Account overview","A summary of your projects and account activity."],
+    ["projects","Project reports","Your project history, service mix and progress."],
+    ["financial","Financial statements","Your quotes, invoices, payments and balances."],
+    ["delivery","Delivery reports","Your completed projects and delivery timelines."],
+    ["quality","Quality reports","Quality review outcomes and requested revisions."],
+    ["feedback","Feedback reports","Your submitted feedback and change requests."]
+  ];
+  function reportCategories(){return isAdmin()?adminReportCategories:role()==="client"?clientReportCategories:[];}
+  function reportDateRange(){
+    const start=$("#report-start-date").value,end=$("#report-end-date").value;
+    if(start&&end&&start>end)return {start,end,valid:false,label:"Start date must be before end date"};
+    return {start,end,valid:true,label:(start||"Beginning")+" to "+(end||"Today")};
+  }
+  function renderReportWorkspace(){
+    const categories=reportCategories(),select=$("#report-category"),current=select.value;
+    select.innerHTML='<option value="">Choose a report</option>'+categories.map(([id,name])=>'<option value="'+id+'">'+safe(name)+'</option>').join("");
+    if(categories.some(x=>x[0]===current))select.value=current;
+    $("#reports-intro").textContent=isAdmin()?"Business-wide reporting across finance, projects, clients and operations.":"Reports and statements for your FrameCrest account.";
+    const selected=categories.find(x=>x[0]===select.value);
+    $("#report-category-grid").innerHTML=categories.map(([id,name,description])=>'<button type="button" class="report-category-card '+(id===select.value?"selected":"")+'" data-report-category="'+id+'"><strong>'+safe(name)+'</strong><span>'+safe(description)+'</span><small>Open report →</small></button>').join("");
+    $("#report-category-grid").querySelectorAll("[data-report-category]").forEach(button=>button.addEventListener("click",()=>{select.value=button.dataset.reportCategory;renderReportWorkspace();}));
+    $("#report-title").textContent=selected?selected[1]:"Select a report category";
+    $("#report-period-label").textContent=reportDateRange().label;
+    $("#report-workspace .report-empty p").textContent=reportDateRange().valid?"Choose a category and date range. Report data and export options will be added in the next implementation stage.":"Please correct the selected date range.";
+  }
+  $("#report-category").addEventListener("change",renderReportWorkspace);
+  $("#report-start-date").addEventListener("change",renderReportWorkspace);
+  $("#report-end-date").addEventListener("change",renderReportWorkspace);
+  $("#report-reset-dates").addEventListener("click",()=>{$("#report-start-date").value="";$("#report-end-date").value="";renderReportWorkspace();});
   const role = () => profile?.role || "client";
   const isAdmin = () => role()==="admin";
   const statusClass = s => String(s||"").toLowerCase().replaceAll(" ","-");
@@ -94,7 +135,8 @@
     $("#welcome-subtitle").textContent=p.role==="client"?"A clear view of your projects, progress and anything that needs your attention.":p.role==="editor"?"Your assigned projects, production briefs and delivery deadlines.":"Here is what's happening across your workspace.";
     $("#today-label").textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
     $$(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
-    $$(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
+    $(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
+    const reportsNav=$("#reports-nav");if(reportsNav)reportsNav.classList.toggle("hidden",!["admin","client"].includes(role()));
     $("#clients-view").classList.toggle("hidden",!isAdmin());
     $("#messages-nav").classList.toggle("hidden",role()==="editor");
     const financeNav=$('.nav-item[data-view="finance"]')[0];if(financeNav)financeNav.classList.toggle("hidden",role()==="editor");
@@ -554,10 +596,13 @@
   }
   $("#messages-refresh").addEventListener("click",refreshMessageInbox);
   function setView(view){
-    $$(".view").forEach(el=>el.classList.add("hidden"));$("#"+view+"-view").classList.remove("hidden");
+    if(view==="reports"&&!["admin","client"].includes(role()))return;
+    if(view==="finance"&&role()==="editor")return;
+    $(".view").forEach(el=>el.classList.add("hidden"));$("#"+view+"-view").classList.remove("hidden");
     $$(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
     $("#page-title").textContent=view==="team"?"Team directory":view.charAt(0).toUpperCase()+view.slice(1);
     if(view==="inbox")refreshMessageInbox();
+    if(view==="reports")renderReportWorkspace();
   }
   $$(".nav-item").forEach(b=>b.addEventListener("click",()=>{setView(b.dataset.view);if(b.dataset.view==="finance")renderFinance();}));
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
