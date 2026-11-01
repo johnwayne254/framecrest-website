@@ -343,7 +343,7 @@
     if(error||!p){showLogin("Your account profile is not ready. Ask the administrator to check your access.");return;}
     profile=p;
     $("#user-name").textContent=p.full_name||user.email; $("#user-role").textContent=p.role; $("#avatar").textContent=(p.full_name||user.email||"F").slice(0,1).toUpperCase();
-    $("#welcome-title").textContent="Good to have you here, "+((p.full_name||"").split(" ")[0]||"");
+    const firstName=(p.full_name||user.email||"").trim().split(" ")[0].split("@")[0]||"there"; const hour=new Date().getHours(); const greeting=hour<12?"Good morning":hour<17?"Good afternoon":"Good evening"; $("#welcome-title").textContent=greeting+", "+firstName+".";
     $("#welcome-subtitle").textContent=p.role==="client"?"A clear view of your projects, progress and anything that needs your attention.":p.role==="editor"?"Your assigned projects, production briefs and delivery deadlines.":"Here is what's happening across your workspace.";
     $("#today-label").textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
     $$(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
