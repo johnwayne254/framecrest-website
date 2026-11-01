@@ -101,7 +101,54 @@
     $("#report-category-grid").querySelectorAll("[data-report-category]").forEach(button=>button.addEventListener("click",()=>{select.value=button.dataset.reportCategory;renderReportWorkspace();}));
     $("#report-title").textContent=selected?selected[1]:"Select a report category";
     $("#report-period-label").textContent=reportDateRange().label;
-    $("#report-workspace .report-empty p").textContent=reportDateRange().valid?"Choose a category and date range. Report data and export options will be added in the next implementation stage.":"Please correct the selected date range.";
+    renderReportOutput();
+  }
+  function renderReportOutput(){
+    const id=$("#report-category").value,range=reportDateRange(),host=$("#report-workspace");
+    if(!range.valid){host.querySelector(".report-empty").innerHTML='<p class="message">Please correct the selected date range.</p>';return;}
+    if(!id){host.querySelector(".report-empty").innerHTML='<div class="report-empty"><span class="report-empty-icon">▥</span><strong>Your reports will appear here</strong><p>Select a report category to view real dashboard data for the chosen period.</p></div>';return;}
+    const within=(v)=>{if(!v)return false;const d=String(v).slice(0,10);return (!range.start||d>=range.start)&&(!range.end||d<=range.end);};
+    const periodProjects=projects.filter(p=>within(p.created_at));
+    const periodPayments=paymentRecords.filter(p=>within(p.payment_date));
+    const projectSet=periodProjects;
+    const total=(arr,key)=>arr.reduce((sum,x)=>sum+Number(x[key]||0),0);
+    const stat=(label,value)=>'<article class="stat-card"><span>'+safe(label)+'</span><strong>'+safe(value)+'</strong></article>';
+    const table=(headers,rows)=>'<div class="table-wrap"><table><thead><tr>'+headers.map(x=>'<th>'+safe(x)+'</th>').join("")+'</tr></thead><tbody>'+ (rows.length?rows.map(row=>'<tr>'+row.map(cell=>'<td>'+cell+'</td>').join("")+'</tr>').join(""):'<tr><td class="empty" colspan="'+headers.length+'">No records for this period.</td></tr>')+'</tbody></table></div>';
+    const bars=(items)=>{const max=Math.max(1,...items.map(x=>x[1]));return '<div class="finance-chart">'+items.map(([label,value])=>'<div class="finance-bar-row"><span>'+safe(label)+'</span><div class="finance-bar-track"><i style="width:'+Math.max(0,value/max*100)+'%"></i></div><strong>'+safe(value)+'</strong></div>').join("")+'</div>';};
+    let html="";
+    if(id==="business"||id==="account"){
+      const revenue=total(periodPayments,"amount_usd"),quotes=projectSet.reduce((sum,p)=>sum+Number((finances.find(x=>x.project_id===p.id)||{}).quote_usd||0),0);
+      html='<div class="stats-grid">'+stat("Projects created",projectSet.length)+stat("Payments received",money(revenue))+stat("Invoices issued",invoiceRecords.filter(x=>within(x.issue_date)).length)+stat("Delivered projects",projectSet.filter(p=>p.status==="Delivered").length)+'</div>'+table(["PERFORMANCE","RESULT"],[["Active projects",projectSet.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length],["Quoted value",money(quotes)],["Payments recorded",periodPayments.length],["Clients with projects",new Set(projectSet.map(p=>p.client_id)).size]]);
+    }else if(id==="financial"){
+      const quotes=projects.reduce((sum,p)=>sum+Number((finances.find(x=>x.project_id===p.id)||{}).quote_usd||0),0),paid=projects.reduce((sum,p)=>sum+Number((finances.find(x=>x.project_id===p.id)||{}).paid_usd||0),0);
+      html='<div class="stats-grid">'+stat("Payments in period",money(total(periodPayments,"amount_usd")))+stat("Payment entries",periodPayments.length)+stat("Outstanding balance",money(Math.max(0,quotes-paid)))+stat("Invoices in period",invoiceRecords.filter(x=>within(x.issue_date)).length)+'</div>'+table(["DATE","PROJECT","METHOD","AMOUNT"],periodPayments.map(x=>[safe(date(x.payment_date)),safe(projects.find(p=>p.id===x.project_id)?.project_code||"—"),safe(x.payment_method||"—"),money(x.amount_usd)]));
+    }else if(id==="projects"){
+      const counts=["Awaiting files","In progress","In QA","Revisions","Delivered","Cancelled"].map(s=>[s,projectSet.filter(p=>p.status===s).length]);
+      html='<div class="stats-grid">'+stat("Projects",projectSet.length)+stat("In progress",projectSet.filter(p=>p.status==="In progress").length)+stat("In QA",projectSet.filter(p=>p.status==="In QA").length)+stat("Delivered",projectSet.filter(p=>p.status==="Delivered").length)+'</div><h4>Projects by status</h4>'+bars(counts)+table(["PROJECT","CLIENT","SERVICE","STATUS","CREATED"],projectSet.map(p=>[safe(p.project_code||p.name),safe(p.clients?.name||"—"),safe(p.service),safe(p.status),safe(date(String(p.created_at||"").slice(0,10)))]));
+    }else if(id==="clients"){
+      const rows=clients.map(c=>{const ps=projects.filter(p=>p.client_id===c.id&&within(p.created_at));return {c,ps};}).filter(x=>x.ps.length);
+      html='<div class="stats-grid">'+stat("Active client accounts",clients.length)+stat("Clients with projects",rows.length)+stat("Projects in period",periodProjects.length)+stat("Repeat clients",rows.filter(x=>x.ps.length>1).length)+'</div>'+table(["CLIENT","PROJECTS","QUOTED VALUE"],rows.map(({c,ps})=>[safe(c.name),ps.length,money(ps.reduce((sum,p)=>sum+Number((finances.find(f=>f.project_id===p.id)||{}).quote_usd||0),0))]));
+    }else if(id==="team"){
+      const people=[...team,...(qaReviewers.filter(q=>!team.some(t=>t.id===q.id)).map(q=>({...q,role:"qa"})))];
+      html='<div class="stats-grid">'+stat("Staff accounts",people.length)+stat("Projects assigned",projectSet.filter(p=>p.editor_id||p.qa_id).length)+stat("Editor assignments",projectSet.filter(p=>p.editor_id).length)+stat("QA assignments",projectSet.filter(p=>p.qa_id).length)+'</div>'+table(["TEAM MEMBER","ROLE","EDITOR ASSIGNMENTS","QA ASSIGNMENTS"],people.map(m=>[safe(m.full_name||"Team member"),safe(m.role||"—"),projectSet.filter(p=>p.editor_id===m.id).length,projectSet.filter(p=>p.qa_id===m.id).length]));
+    }else if(id==="delivery"){
+      const today=new Date().toISOString().slice(0,10),overdue=projects.filter(p=>p.due_date&&p.due_date<today&&!["Delivered","Cancelled"].includes(p.status));
+      html='<div class="stats-grid">'+stat("Projects due in period",projectSet.filter(p=>within(p.due_date)).length)+stat("Delivered",projectSet.filter(p=>p.status==="Delivered").length)+stat("Currently overdue",overdue.length)+stat("Awaiting files",projectSet.filter(p=>p.status==="Awaiting files").length)+'</div>'+table(["PROJECT","DUE DATE","STATUS"],projectSet.filter(p=>within(p.due_date)||p.status==="Delivered").map(p=>[safe(p.project_code||p.name),safe(date(p.due_date)),safe(p.status)]));
+    }else if(id==="quality"){
+      const qa=["Not started","Pending review","Passed","Changes required"].map(s=>[s,projectSet.filter(p=>p.qa_status===s).length]);
+      html='<div class="stats-grid">'+stat("Projects reviewed",projectSet.filter(p=>p.qa_status==="Passed").length+projectSet.filter(p=>p.qa_status==="Changes required").length)+stat("Pending review",projectSet.filter(p=>p.qa_status==="Pending review").length)+stat("Passed",projectSet.filter(p=>p.qa_status==="Passed").length)+stat("Changes required",projectSet.filter(p=>p.qa_status==="Changes required").length)+'</div><h4>QA status breakdown</h4>'+bars(qa);
+    }else if(id==="communication"){
+      html='<div class="report-empty"><span class="report-empty-icon">✉</span><strong>Communication data is not connected to reports yet</strong><p>Project messaging and client feedback are working. The next reporting update will connect those records here.</p></div>';
+    }else if(id==="profitability"){
+      const quote=projectSet.reduce((sum,p)=>sum+Number((finances.find(f=>f.project_id===p.id)||{}).quote_usd||0),0),received=projectSet.reduce((sum,p)=>sum+Number((finances.find(f=>f.project_id===p.id)||{}).paid_usd||0),0);
+      html='<div class="stats-grid">'+stat("Quoted value",money(quote))+stat("Payments received",money(received))+stat("Projects",projectSet.length)+'</div><div class="report-empty"><strong>Profit cannot be calculated yet</strong><p>Direct production costs and freelancer payments are not currently recorded in the dashboard. These figures show sales and collections, not profit.</p></div>';
+    }else if(id==="feedback"){
+      html='<div class="report-empty"><strong>Feedback reports are not available in this workspace yet</strong><p>Client feedback summaries will be connected in the next reporting update.</p></div>';
+    }
+    host.querySelector(".report-empty")?.remove();
+    let output=host.querySelector(".report-output");
+    if(!output){output=document.createElement("div");output.className="report-output";host.append(output);}
+    output.innerHTML=html;
   }
   $("#report-category").addEventListener("change",renderReportWorkspace);
   $("#report-start-date").addEventListener("change",renderReportWorkspace);
