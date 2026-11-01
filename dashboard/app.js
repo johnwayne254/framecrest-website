@@ -166,6 +166,42 @@
     if(!rows.length)throw new Error("There is no report data to export for this category.");
     return rows;
   }
+  async function loadReportArchives(){
+    const body=$("#report-history-list");
+    if(!body)return;
+    body.innerHTML='<tr><td colspan="4" class="empty">Loading saved reports…</td></tr>';
+    const {data,error}=await db.from("report_archives").select("id,title,category,date_from,date_to,report_data,created_at").order("created_at",{ascending:false}).limit(50);
+    if(error){body.innerHTML='<tr><td colspan="4" class="empty">Report history is unavailable. Check that report_archives.sql has been run in Supabase.</td></tr>';console.error("FrameCrest report archive:",error);return;}
+    body.innerHTML=(data||[]).map(x=>'<tr><td><strong>'+safe(x.title)+'</strong></td><td>'+safe(x.date_from||"Beginning")+' – '+safe(x.date_to||"Today")+'</td><td>'+new Date(x.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</td><td><button class="btn secondary report-archive-open" data-id="'+safe(x.id)+'" type="button">View</button></td></tr>').join("")||'<tr><td colspan="4" class="empty">No saved reports yet.</td></tr>';
+    body.querySelectorAll(".report-archive-open").forEach(button=>button.addEventListener("click",async()=>{
+      const item=data.find(x=>x.id===button.dataset.id);if(!item)return;
+      $("#report-category").value=item.category;
+      $("#report-start-date").value=item.date_from||"";
+      $("#report-end-date").value=item.date_to||"";
+      renderReportWorkspace();
+      const rows=Array.isArray(item.report_data)?item.report_data:[];
+      const output=$("#report-workspace .report-output");
+      output.innerHTML='<div class="report-empty"><strong>Saved report snapshot</strong><p>This is the data saved on '+safe(new Date(item.created_at).toLocaleString("en-US"))+'. It will not change when live project records are updated.</p></div><div class="table-wrap"><table><tbody>'+rows.map((row,i)=>'<tr>'+row.map(cell=>i===0?'<th>'+safe(cell)+'</th>':'<td>'+safe(cell)+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>';
+      $("#report-title").textContent=item.title+" · Saved snapshot";
+      $("#report-period-label").textContent=(item.date_from||"Beginning")+" to "+(item.date_to||"Today");
+    }));
+  }
+  $("#report-save").addEventListener("click",async()=>{
+    const button=$("#report-save");
+    try{
+      if(!$("#report-category").value)throw new Error("Choose a report category first.");
+      const rows=reportExportRows();
+      button.disabled=true;button.textContent="Saving…";
+      const category=$("#report-category").value,title=$("#report-title").textContent;
+      const payload={title,category,date_from:$("#report-start-date").value||null,date_to:$("#report-end-date").value||null,report_data:rows,created_by:user.id,client_id:role()==="client"?profile.client_id:null};
+      const {error}=await db.from("report_archives").insert(payload);
+      if(error)throw error;
+      toast("Report saved to history.");
+      await loadReportArchives();
+    }catch(e){toast("Could not save report: "+(e.message||"Please try again."));}
+    finally{button.disabled=false;button.textContent="Save report";}
+  });
+  $("#report-history-refresh").addEventListener("click",loadReportArchives);
   function reportFileName(ext){
     const category=$("#report-category").selectedOptions[0]?.textContent||"Report";
     const start=$("#report-start-date").value||"all-time",end=$("#report-end-date").value||"today";
@@ -689,7 +725,7 @@
     $$(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
     $("#page-title").textContent=view==="team"?"Team directory":view.charAt(0).toUpperCase()+view.slice(1);
     if(view==="inbox")refreshMessageInbox();
-    if(view==="reports")renderReportWorkspace();
+    if(view==="reports"){renderReportWorkspace();loadReportArchives();}
   }
   $$(".nav-item").forEach(b=>b.addEventListener("click",()=>{setView(b.dataset.view);if(b.dataset.view==="finance")renderFinance();}));
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.goto)));
