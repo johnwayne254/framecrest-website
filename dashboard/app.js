@@ -135,7 +135,7 @@
     $("#welcome-subtitle").textContent=p.role==="client"?"A clear view of your projects, progress and anything that needs your attention.":p.role==="editor"?"Your assigned projects, production briefs and delivery deadlines.":"Here is what's happening across your workspace.";
     $("#today-label").textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
     $$(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
-    $(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
+    $$(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
     const reportsNav=$("#reports-nav");if(reportsNav)reportsNav.classList.toggle("hidden",!["admin","client"].includes(role()));
     $("#clients-view").classList.toggle("hidden",!isAdmin());
     $("#messages-nav").classList.toggle("hidden",role()==="editor");
@@ -598,7 +598,7 @@
   function setView(view){
     if(view==="reports"&&!["admin","client"].includes(role()))return;
     if(view==="finance"&&role()==="editor")return;
-    $(".view").forEach(el=>el.classList.add("hidden"));$("#"+view+"-view").classList.remove("hidden");
+    $$(".view").forEach(el=>el.classList.add("hidden"));$("#"+view+"-view").classList.remove("hidden");
     $$(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
     $("#page-title").textContent=view==="team"?"Team directory":view.charAt(0).toUpperCase()+view.slice(1);
     if(view==="inbox")refreshMessageInbox();
