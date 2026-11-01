@@ -216,25 +216,61 @@
     finally{button.disabled=false;button.textContent="Generate last month's summary";}
   }
   $("#generate-monthly-summary").addEventListener("click",generateMonthlySummary);
+  function savedReportTable(rows){
+    return '<div class="table-wrap"><table><tbody>'+(rows||[]).map((row,i)=>'<tr>'+row.map(cell=>i===0?'<th>'+safe(cell)+'</th>':'<td>'+safe(cell)+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>';
+  }
+  function showSavedReport(item){
+    setView("reports");
+    $("#report-category").value=item.category;
+    $("#report-start-date").value=item.date_from||"";
+    $("#report-end-date").value=item.date_to||"";
+    renderReportWorkspace();
+    const rows=Array.isArray(item.report_data)?item.report_data:[];
+    const output=$("#report-workspace .report-output");
+    output.innerHTML='<div class="report-empty"><strong>Saved report snapshot</strong><p>Saved on '+safe(new Date(item.created_at).toLocaleString("en-US"))+'. This snapshot does not change when live project records are updated.</p></div>'+savedReportTable(rows);
+    $("#report-title").textContent=item.title+" · Saved snapshot";
+    $("#report-period-label").textContent=(item.date_from||"Beginning")+" to "+(item.date_to||"Today");
+    $("#report-workspace").scrollIntoView({behavior:"smooth",block:"start"});
+  }
+  function exportSavedReport(item,format){
+    const rows=Array.isArray(item.report_data)?item.report_data:[];
+    if(!rows.length)throw new Error("This saved report has no exportable data.");
+    const filename="FrameCrest-"+String(item.title||"saved-report").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+    if(format==="csv"){
+      const csv=rows.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+      downloadReport(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}),filename+".csv");
+      toast("Saved report exported as CSV.");return;
+    }
+    const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    if(format==="excel"){
+      const excelRows=[["FrameCrest Studios"],[item.title],[(item.date_from||"Beginning")+" to "+(item.date_to||"Today")],[],...rows];
+      const xml='<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Report"><Table>'+excelRows.map(row=>"<Row>"+row.map(v=>'<Cell><Data ss:Type="String">'+esc(v)+'</Data></Cell>').join("")+"</Row>").join("")+'</Table></Worksheet></Workbook>';
+      downloadReport(new Blob([xml],{type:"application/vnd.ms-excel"}),filename+".xls");
+      toast("Saved report exported for Excel.");return;
+    }
+    if(format==="pdf"){
+      const w=window.open("","_blank");
+      if(!w)throw new Error("Allow pop-ups for this dashboard to print or save the PDF.");
+      const table=savedReportTable(rows);
+      w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(item.title)+'</title><style>body{font:13px Arial,sans-serif;color:#263746;padding:32px}h1{color:#14283F}p{color:#78858E}table{border-collapse:collapse;width:100%;margin:18px 0}th,td{text-align:left;border:1px solid #ddd;padding:9px;font-size:11px}th{background:#F4F2ED;color:#14283F}@media print{body{padding:0}}</style></head><body><h1>FrameCrest Studios</h1><p>REPORT · '+esc((item.date_from||"Beginning")+" to "+(item.date_to||"Today"))+'</p><h2>'+esc(item.title)+'</h2>'+table+'</body></html>');
+      w.document.close();w.focus();w.print();toast("Print window opened. Choose Save as PDF.");return;
+    }
+    throw new Error("Choose CSV, Excel or PDF.");
+  }
   async function loadReportArchives(){
     const body=$("#report-history-list");
     if(!body)return;
-    body.innerHTML='<tr><td colspan="4" class="empty">Loading saved reports…</td></tr>';
+    body.innerHTML='<tr><td colspan="5" class="empty">Loading saved reports…</td></tr>';
     const {data,error}=await db.from("report_archives").select("id,title,category,date_from,date_to,report_data,created_at").order("created_at",{ascending:false}).limit(50);
-    if(error){body.innerHTML='<tr><td colspan="4" class="empty">Report history is unavailable. Check that report_archives.sql has been run in Supabase.</td></tr>';console.error("FrameCrest report archive:",error);return;}
-    body.innerHTML=(data||[]).map(x=>'<tr><td><strong>'+safe(x.title)+'</strong></td><td>'+safe(x.date_from||"Beginning")+' – '+safe(x.date_to||"Today")+'</td><td>'+new Date(x.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</td><td><button class="btn secondary report-archive-open" data-id="'+safe(x.id)+'" type="button">View</button></td></tr>').join("")||'<tr><td colspan="4" class="empty">No saved reports yet.</td></tr>';
-    body.querySelectorAll(".report-archive-open").forEach(button=>button.addEventListener("click",async()=>{
+    if(error){body.innerHTML='<tr><td colspan="5" class="empty">Report history is unavailable. Check that report_archives.sql has been run in Supabase.</td></tr>';console.error("FrameCrest report archive:",error);return;}
+    body.innerHTML=(data||[]).map(x=>'<tr><td><strong>'+safe(x.title)+'</strong></td><td>'+safe(x.date_from||"Beginning")+' – '+safe(x.date_to||"Today")+'</td><td>'+new Date(x.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</td><td><button class="btn secondary report-archive-open" data-id="'+safe(x.id)+'" type="button">View</button></td><td><div class="report-archive-export"><select class="inline-select report-archive-format" aria-label="Export format for '+safe(x.title)+'"><option value="csv">CSV</option><option value="excel">Excel</option><option value="pdf">PDF</option></select><button class="btn secondary report-archive-download" data-id="'+safe(x.id)+'" type="button">Download</button></div></td></tr>').join("")||'<tr><td colspan="5" class="empty">No saved reports yet.</td></tr>';
+    body.querySelectorAll(".report-archive-open").forEach(button=>button.addEventListener("click",()=>{
+      const item=data.find(x=>x.id===button.dataset.id);if(item)showSavedReport(item);
+    }));
+    body.querySelectorAll(".report-archive-download").forEach(button=>button.addEventListener("click",()=>{
       const item=data.find(x=>x.id===button.dataset.id);if(!item)return;
-      setView("reports");
-      $("#report-category").value=item.category;
-      $("#report-start-date").value=item.date_from||"";
-      $("#report-end-date").value=item.date_to||"";
-      renderReportWorkspace();
-      const rows=Array.isArray(item.report_data)?item.report_data:[];
-      const output=$("#report-workspace .report-output");
-      output.innerHTML='<div class="report-empty"><strong>Saved report snapshot</strong><p>This is the data saved on '+safe(new Date(item.created_at).toLocaleString("en-US"))+'. It will not change when live project records are updated.</p></div><div class="table-wrap"><table><tbody>'+rows.map((row,i)=>'<tr>'+row.map(cell=>i===0?'<th>'+safe(cell)+'</th>':'<td>'+safe(cell)+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>';
-      $("#report-title").textContent=item.title+" · Saved snapshot";
-      $("#report-period-label").textContent=(item.date_from||"Beginning")+" to "+(item.date_to||"Today");
+      const format=button.parentElement.querySelector(".report-archive-format").value;
+      try{exportSavedReport(item,format);}catch(e){toast(e.message||"Could not export saved report.");}
     }));
   }
   $("#report-save").addEventListener("click",async()=>{
@@ -270,7 +306,7 @@
       const rows=reportExportRows(),esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
       const title=$("#report-title").textContent,period=$("#report-period-label").textContent;
       const workbookRows=[["FrameCrest Studios"],[title],[period],[],...rows];
-      const xml='<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Report"><Table>'+rows.map(row=>"<Row>"+row.map(v=>'<Cell><Data ss:Type="String">'+esc(v)+'</Data></Cell>').join("")+"</Row>").join("")+"</Table></Worksheet></Workbook>";
+      const xml='<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Report"><Table>'+workbookRows.map(row=>"<Row>"+row.map(v=>'<Cell><Data ss:Type="String">'+esc(v)+'</Data></Cell>').join("")+"</Row>").join("")+"</Table></Worksheet></Workbook>";
       downloadReport(new Blob([xml],{type:"application/vnd.ms-excel"}),reportFileName("xls"));toast("Excel-compatible report exported.");
     }catch(e){toast(e.message);}
   });
