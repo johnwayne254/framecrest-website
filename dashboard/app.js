@@ -389,7 +389,7 @@
     }
     const reviewResult=await db.from("editor_quality_reviews").select("id,project_id,editor_id,reviewer_id,quality_score,feedback,created_at,updated_at").order("created_at",{ascending:false}); qualityReviews=reviewResult.data||[]; if(reviewResult.error)console.warn("Editor quality reviews:",reviewResult.error.message);
     if(isAdmin()){
-      const eventResult=await db.from("editor_work_events").select("id,project_id,editor_id,event_type,details,created_at").order("created_at",{ascending:false}).limit(5000);
+      const eventResult=await db.from("editor_work_events").select("id,project_id,editor_id,editor_name,event_type,details,created_at").order("created_at",{ascending:false}).limit(5000);
       performanceEvents=eventResult.data||[];performanceEventsError=eventResult.error?eventResult.error.message:null;
       if(eventResult.error)console.warn("Editor performance events:",eventResult.error.message);
     }else{performanceEvents=[];performanceEventsError=null;}
@@ -626,7 +626,9 @@
       return;
     }
     const inRange=value=>{const d=String(value||"").slice(0,10);return d>=range.start&&d<=range.end;};
-    const editorsList=team.filter(m=>m.role==="editor");
+    const editorMap=new Map(team.filter(m=>m.role==="editor").map(m=>[m.id,m]));
+    performanceEvents.forEach(e=>{if(e.editor_id&&!editorMap.has(e.editor_id))editorMap.set(e.editor_id,{id:e.editor_id,full_name:e.editor_name||"Former editor",role:"editor",is_active:false});});
+    const editorsList=[...editorMap.values()];
     const raw=editorsList.map(editor=>{
       const events=performanceEvents.filter(e=>e.editor_id===editor.id&&inRange(e.created_at));
       const reviews=qualityReviews.filter(r=>r.editor_id===editor.id&&inRange(r.created_at));
