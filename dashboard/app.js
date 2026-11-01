@@ -38,6 +38,7 @@
     $$(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()));
     $$(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
     $("#clients-view").classList.toggle("hidden",!isAdmin());
+    $("#messages-nav").classList.toggle("hidden",role()==="editor");
     showApp(); await refresh();
   }
   async function refreshClients(){
