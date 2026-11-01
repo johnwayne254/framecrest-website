@@ -97,6 +97,7 @@
     $$(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
     $("#clients-view").classList.toggle("hidden",!isAdmin());
     $("#messages-nav").classList.toggle("hidden",role()==="editor");
+    const financeNav=$('.nav-item[data-view="finance"]')[0];if(financeNav)financeNav.classList.toggle("hidden",role()==="editor");
     showApp(); await refresh(); await subscribeToNotifications();
   }
   async function refreshClients(){
@@ -337,7 +338,7 @@
     if(period==="day"){from=raw;to=raw;label="Daily · "+date(raw);}
     else if(period==="year"){from=d.getFullYear()+"-01-01";to=d.getFullYear()+"-12-31";label="Yearly · "+d.getFullYear();}
     else if(period==="all"){from="0001-01-01";to="9999-12-31";label="All time";}
-    else{from=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01";to=new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().slice(0,10);label="Monthly · "+d.toLocaleDateString("en-US",{month:"long",year:"numeric"});}
+    else{from=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01";to=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(new Date(d.getFullYear(),d.getMonth()+1,0).getDate()).padStart(2,"0");label="Monthly · "+d.toLocaleDateString("en-US",{month:"long",year:"numeric"});}
     return {period,from,to,label};
   }
   function renderFinanceReport(){
@@ -361,8 +362,8 @@
     $("#invoice-create-open").classList.toggle("hidden",!isAdmin());
     $("#finance-stats").classList.toggle("hidden",role()==="editor");
     $("#finance-export").classList.toggle("hidden",role()==="editor");
-    $("#finance-period").addEventListener("change",renderFinanceReport);
-    $("#finance-date").addEventListener("change",renderFinanceReport);
+    $("#finance-period").onchange=renderFinanceReport;
+    $("#finance-date").onchange=renderFinanceReport;
     const rows=projects.map(p=>{const f=finances.find(x=>x.project_id===p.id)||{quote_usd:0,paid_usd:0};return {p,f,balance:Number(f.quote_usd||0)-Number(f.paid_usd||0)};});
     $("#finance-table").innerHTML=rows.map(({p,f,balance})=>'<tr><td><strong>'+safe(p.project_code)+'</strong><small class="subline">'+safe(p.name)+'</small></td>'+(clientView?'':'<td>'+safe(p.clients?.name||"—")+'</td>')+'<td>'+money(f.quote_usd)+'</td><td>'+money(f.paid_usd)+'</td><td><strong>'+money(balance)+'</strong></td><td>'+(clientView?'<button class="btn secondary payment-history" data-id="'+p.id+'" type="button">Payment history</button>':'<button class="btn secondary finance-edit" data-id="'+p.id+'" type="button">Quote</button> <button class="btn secondary payment-add" data-id="'+p.id+'" type="button">Add payment</button> <button class="btn secondary payment-history" data-id="'+p.id+'" type="button">History</button>')+'</td></tr>').join("")||'<tr><td colspan="6" class="empty">No projects to show.</td></tr>';
     const heads=clientView?["PROJECT","QUOTE (USD)","PAID (USD)","OUTSTANDING","PAYMENTS"]:["PROJECT","CLIENT","QUOTE (USD)","PAID (USD)","OUTSTANDING","ACTION"];
