@@ -531,6 +531,7 @@
       const p=projects.find(x=>x.id===btn.dataset.id);if(!p)return;
       const form=$("#project-form");form.dataset.editId=p.id;
       ["name","client_id","service","quantity","due_date","editor_id","qa_id","brief","folder_url"].forEach(k=>{form.elements[k].value=p[k]??"";});
+      const projectFinance=finances.find(x=>x.project_id===p.id);form.elements.quote_usd.value=projectFinance?.quote_usd??"";
       $("#project-modal h2").textContent="Edit project";
       $("#project-modal .eyebrow").textContent="PROJECT DETAILS";
       form.querySelector('button[type="submit"]').textContent="Save changes";
