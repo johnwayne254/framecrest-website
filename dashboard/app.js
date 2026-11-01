@@ -194,6 +194,8 @@
     $("#details-activity-open").dataset.id=p.id;
     $("#details-revision-open").dataset.id=p.id;
     $("#details-revision-open").classList.toggle("hidden",role()!=="client"||p.status==="Delivered"||p.status==="Cancelled");
+    $("#details-message-open").dataset.id=p.id;
+    $("#details-message-open").classList.toggle("hidden",role()==="editor");
     $("#project-details-modal").classList.remove("hidden");
   }
   $("#details-revision-open").addEventListener("click",()=>{
@@ -211,6 +213,24 @@
     try{const {error}=await db.from("project_feedback").insert({project_id:project.id,client_id:profile.client_id,message});if(error)throw error;$("#revision-modal").classList.add("hidden");toast("Your change request has been sent.");}
     catch(err){$("#revision-message").textContent="Could not submit request: "+(err.message||"Please try again.");}
     finally{submit.disabled=false;submit.textContent="Submit request";}
+  });
+  $("#details-message-open").addEventListener("click",()=>{const id=$("#details-message-open").dataset.id;$("#project-details-modal").classList.add("hidden");openProjectMessages(id);});
+  async function openProjectMessages(projectId){
+    const p=projects.find(x=>x.id===projectId);if(!p)return;
+    $("#messages-title").textContent=p.project_code+" · "+p.name;
+    $("#message-form").reset();$("#message-form").elements.project_id.value=projectId;
+    $("#message-feedback").textContent="";$("#messages-list").innerHTML='<p class="muted">Loading conversation…</p>';$("#messages-modal").classList.remove("hidden");
+    await loadProjectMessages(projectId);
+  }
+  async function loadProjectMessages(projectId){
+    const {data,error}=await db.from("project_messages").select("id,message,sender_id,created_at,profiles(full_name,role)").eq("project_id",projectId).order("created_at",{ascending:true});
+    if(error){$("#messages-list").innerHTML='<p class="message">Could not load messages: '+safe(error.message)+'</p>';return;}
+    $("#messages-list").innerHTML=(data||[]).map(m=>{const own=m.sender_id===user.id;const who=own?"You":m.profiles?.full_name||(m.profiles?.role==="client"?"Client":"FrameCrest team");return '<article class="activity-entry"><div><strong>'+safe(who)+'</strong><p style="white-space:pre-wrap">'+safe(m.message)+'</p><p>'+new Date(m.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})+'</p></div></article>';}).join("")||'<p class="empty">No messages yet. Start the conversation below.</p>';
+    $("#messages-list").scrollTop=$("#messages-list").scrollHeight;
+  }
+  $("#message-form").addEventListener("submit",async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector('button[type="submit"]');if(b.disabled)return;const projectId=f.elements.project_id.value,message=String(f.elements.message.value||"").trim();if(!message)return;b.disabled=true;b.textContent="Sending…";
+    try{const {error}=await db.from("project_messages").insert({project_id:projectId,sender_id:user.id,message});if(error)throw error;f.elements.message.value="";$("#message-feedback").textContent="Message sent.";await loadProjectMessages(projectId);}
+    catch(err){$("#message-feedback").textContent="Could not send message: "+(err.message||"Please try again.");}finally{b.disabled=false;b.textContent="Send message";}
   });
   $("#details-activity-open").addEventListener("click",()=>{
     const id=$("#details-activity-open").dataset.id;
