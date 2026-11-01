@@ -2,7 +2,7 @@
   const config = window.FRAMECREST_CONFIG || {};
   const cleanPhone = String(config.whatsappNumber || "").replace(/\D/g, "");
   const whatsappReady = /^\d{8,15}$/.test(cleanPhone);
-  const formEndpoint = String(config.formspreeEndpoint || "").trim();
+  const formSubmitEmail = String(config.formSubmitEmail || "").trim();
   const instagramUrl = String(config.instagramUrl || "").trim();
 
   // Mobile navigation
@@ -80,55 +80,75 @@
     }
   });
 
-  // Configure the form only after its real Formspree endpoint is supplied.
+  // Configure the project enquiry form to deliver through FormSubmit.
   const form = document.getElementById("contact-form");
   const status = document.getElementById("form-status");
   const submitButton = form?.querySelector('button[type="submit"]');
-  const endpointIsValid = /^https:\/\/formspree\.io\/f\/[A-Za-z0-9]+$/.test(formEndpoint);
+  const formEmailIsValid = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formSubmitEmail);
+  const formSubmitEndpoint = formEmailIsValid
+    ? "https://formsubmit.co/ajax/" + encodeURIComponent(formSubmitEmail)
+    : "";
 
   if (form && submitButton) {
-    if (!endpointIsValid) {
+    if (!formEmailIsValid) {
       submitButton.disabled = true;
-      submitButton.textContent = "Enquiry form coming soon";
+      submitButton.textContent = "Enquiry form unavailable";
       if (status) status.textContent =
-        "The online enquiry form is being connected. It will accept submissions once the secure form service is configured.";
+        "The enquiry form is temporarily unavailable. Please email FrameCrest directly.";
     } else {
       submitButton.disabled = false;
+      submitButton.textContent = "Send project enquiry ↗";
       if (status) status.textContent =
-        "Complete the form with your project details, then send your enquiry to FrameCrest.";
+        "Your enquiry will be sent to FrameCrest. We use the details only to review and respond to your project request.";
     }
   }
 
   form?.addEventListener("submit", async event => {
     event.preventDefault();
-    if (!endpointIsValid) return;
+    if (!formEmailIsValid || !form) return;
     if (!form.reportValidity()) return;
 
-    // Honeypot: quietly reject automated form submissions.
-    if (form.querySelector('[name="_gotcha"]')?.value) return;
+    // FormSubmit uses this hidden honeypot field to filter automated submissions.
+    if (form.querySelector('[name="_honey"]')?.value) return;
 
     submitButton.disabled = true;
     submitButton.setAttribute("aria-busy", "true");
     submitButton.textContent = "Sending…";
-    if (status) status.textContent = "Sending your enquiry securely…";
+    if (status) status.textContent = "Sending your project enquiry…";
 
     try {
-      const response = await fetch(formEndpoint, {
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+      payload._replyto = String(formData.get("email") || "");
+      payload._subject = "New FrameCrest Studios project enquiry";
+
+      const response = await fetch(formSubmitEndpoint, {
         method: "POST",
-        body: new FormData(form),
-        headers: { Accept: "application/json" }
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(payload)
       });
-      if (!response.ok) throw new Error("The form service returned an error.");
+      let result = {};
+      try {
+        result = await response.json();
+      } catch (_) {
+        result = {};
+      }
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || "The form service returned an error.");
+      }
 
       form.reset();
       if (status) status.textContent =
-        "Thank you. Your enquiry has been sent successfully. We'll be in touch.";
-      submitButton.textContent = "Enquiry sent";
+        "Thank you. Your project enquiry has been submitted. We'll respond using the email address you provided.";
+      submitButton.textContent = "Enquiry submitted";
     } catch (error) {
       if (status) status.textContent =
-        "We couldn't send your enquiry. Please try again in a moment.";
+        "We couldn't submit your enquiry just now. Please try again or email framecrest.media@gmail.com.";
       submitButton.disabled = false;
-      submitButton.textContent = "Try again";
+      submitButton.textContent = "Try again ↗";
     } finally {
       submitButton.removeAttribute("aria-busy");
     }
