@@ -684,7 +684,7 @@
       const coverage=x.coverage?'<small class="performance-detail">'+x.coverage+'% weight coverage</small>':'<small class="performance-detail">No recorded data</small>';
       return '<tr><td>'+name+'</td><td><strong>'+overall+'</strong>'+coverage+'</td><td>'+metricCell(x.quality,x.quality===null?"No reviews": "Average of "+x.reviews+" reviews")+'</td><td>'+metricCell(x.onTimeScore,x.dueCount?x.onTimeCount+" of "+x.dueCount+" due-dated deliveries on time":"No due-dated deliveries")+'</td><td>'+metricCell(x.productivity,x.delivered+" delivered; relative to team leader")+'</td><td>'+metricCell(x.revisionScore,x.submitted?x.revisions+" revision requests / "+x.submitted+" submissions":"No submissions recorded")+'</td><td>'+metricCell(x.consistency,x.consistency===null?"No production events":x.activeWeeks+" active weeks / "+x.weekCount+" weeks")+'</td><td>'+x.delivered+'</td></tr>';
     }).join("")||'<tr><td colspan="8" class="empty">No editor accounts are available.</td></tr>';
-    $(".performance-editor-link").forEach(button=>button.addEventListener("click",()=>openTeamHistory(button.dataset.id)));
+    $$(".performance-editor-link").forEach(button=>button.addEventListener("click",()=>openTeamHistory(button.dataset.id)));
   }
   ["performance-period","performance-start","performance-end"].forEach(id=>$("#"+id)?.addEventListener("change",renderEditorPerformance));
   $("#performance-refresh")?.addEventListener("click",()=>refresh());
