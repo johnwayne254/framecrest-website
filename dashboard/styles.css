@@ -81,3 +81,15 @@
 .editor-performance-reviews .editor-feedback-item{border:1px solid var(--line);padding:14px;background:#fff}
 .editor-performance-reviews .editor-feedback-item p{margin:9px 0;color:var(--muted);line-height:1.6}
 .editor-performance-reviews .editor-feedback-item small{color:var(--muted)}
+
+
+/* Back link to the public FrameCrest website from the secure workspace. */
+.public-site-login-link{
+  display:inline-block;margin-top:16px;color:#315575;font-size:11px;
+  font-weight:700;text-decoration:none;border-bottom:1px solid #D6B45F;padding-bottom:4px;
+}
+.public-site-login-link:hover{color:#14283F}
+.side-public-site-link{
+  display:inline-block;margin:14px 0 0 42px;color:#D6B45F;font-size:10px;text-decoration:none;
+}
+.side-public-site-link:hover{color:#fff}

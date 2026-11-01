@@ -1857,3 +1857,43 @@ body.about-page{
   .privacy-content h2{font-size:20px}
   .thank-you-hero{min-height:60vh}
 }
+
+
+/* Client portal entry points across the public site. */
+.main-nav .nav-portal{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:9px 12px;border:1px solid var(--gold);color:var(--ink);
+  font-size:10px;font-weight:700;letter-spacing:.35px;white-space:nowrap;
+  background:transparent;transition:background .2s ease,color .2s ease,border-color .2s ease;
+}
+.main-nav .nav-portal:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.main-nav .nav-portal span{font-size:13px}
+.footer-portal-link{color:var(--gold)!important;font-weight:700}
+.footer-portal-link:hover{color:#fff!important}
+.hero-client-link{color:var(--olive)}
+.contact-client-portal{
+  display:grid;grid-template-columns:58px minmax(0,1fr) auto;align-items:center;
+  gap:24px;margin:0;padding:28px 8.5%;background:#e9eef2;
+  border-bottom:1px solid rgba(20,42,66,.12);
+}
+.contact-portal-mark{
+  width:52px;height:52px;display:grid;place-items:center;
+  border:1px solid var(--gold);color:var(--ink);font:500 22px var(--serif);letter-spacing:-2px;
+}
+.contact-portal-copy{min-width:0}
+.contact-portal-copy .eyebrow{margin:0 0 6px}
+.contact-portal-copy h2{color:var(--ink);font:500 22px/1.2 var(--serif);margin:0 0 6px}
+.contact-portal-copy>p:last-child{max-width:660px;color:#687684;font-size:10px;line-height:1.8;margin:0}
+.contact-client-portal .button{white-space:nowrap}
+@media(max-width:950px){
+  .main-nav .nav-portal{padding:8px 9px;font-size:9px}
+  .contact-client-portal{padding-left:6%;padding-right:6%;gap:17px}
+}
+@media(max-width:700px){
+  .main-nav .nav-portal{align-self:flex-start;padding:7px 0;border:0;border-bottom:1px solid var(--gold);font-size:11px}
+  .main-nav .nav-portal:hover{background:transparent;color:var(--olive);border-color:var(--gold)}
+  .contact-client-portal{grid-template-columns:42px minmax(0,1fr);gap:13px;padding:24px 6%}
+  .contact-portal-mark{width:40px;height:40px;font-size:18px}
+  .contact-portal-copy h2{font-size:19px}
+  .contact-client-portal .button{grid-column:2;justify-self:start;margin-top:2px}
+}

@@ -44,3 +44,11 @@ After the first deployment, add the custom domain `dashboard.framecrest.media` i
 
 ## Current MVP scope
 The first release supports client records, project creation, assignment, status updates, due dates, QA status and client-scoped project visibility. Payment figures are stored securely in the database; finance editing and advanced analytics are planned for the next release.
+
+## Website and automatic deployment
+
+The public website links to this workspace at **https://dashboard.framecrest.media/**. The dashboard login page also links back to **https://framecrest.media/**. The dashboard is invitation-only; clients sign in with the account created for them, then use **New project request** and **Messages** to submit work requests and communicate with the FrameCrest team.
+
+This dashboard is the separate `framecrest-dashboard` Cloudflare Pages project, built from the `dashboard/` directory of the same `johnwayne254/framecrest-website` GitHub repository. Set its production branch to `main`, enable automatic production deployments, and use `dashboard` as the build output directory. The public website project uses the repository root as its output directory. A commit to `main` should automatically deploy both connected projects; use Build watch paths to scope dashboard builds to `dashboard/**`.
+
+The current client portal supports project request forms and project messaging. It does not include a general file-upload control in this MVP. Clients can use the delivery-folder links provided for each project where those have been configured.

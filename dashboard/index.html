@@ -14,6 +14,7 @@
     <p class="eyebrow">PRIVATE WORKSPACE</p><h1>Welcome back.</h1><p class="muted">Sign in to manage projects, clients and delivery.</p>
     <form id="login-form"><label>Email address<input id="email" type="email" autocomplete="username" required placeholder="you@company.com"></label><label>Password<input id="password" type="password" autocomplete="current-password" required placeholder="Your password"></label><button class="btn primary full" type="submit">Sign in <span>→</span></button></form>
     <p id="login-message" class="message" aria-live="polite"></p><p class="tiny muted">Access is invitation-only. Contact your FrameCrest administrator for an account.</p>
+    <a class="public-site-login-link" href="https://framecrest.media/">← Visit the public website</a>
   </div>
 </div>
 <div id="app" class="app-shell hidden">
@@ -29,7 +30,7 @@
       <button class="nav-item" data-view="finance"><span>$</span> Finance</button>
       <button class="nav-item reports-access" data-view="reports" id="reports-nav"><span>▥</span> Reports</button><button class="nav-item admin-only" data-view="team"><span>♙</span> Team</button><button class="nav-item admin-only" data-view="performance"><span>▤</span> Performance</button><button class="nav-item editor-only hidden" data-view="editor-performance"><span>▤</span> My performance</button>
     </nav>
-    <div class="sidebar-bottom"><div class="profile-chip"><div class="avatar" id="avatar">F</div><div><strong id="user-name">Studio User</strong><small id="user-role">Team member</small></div></div><button id="sign-out" class="signout">Sign out ↗</button></div>
+    <div class="sidebar-bottom"><div class="profile-chip"><div class="avatar" id="avatar">F</div><div><strong id="user-name">Studio User</strong><small id="user-role">Team member</small></div></div><a class="side-public-site-link" href="https://framecrest.media/">Public website ↗</a><button id="sign-out" class="signout">Sign out ↗</button></div>
   </aside>
   <main class="main-area">
     <header class="topbar"><div><p class="eyebrow">FRAMECREST WORKSPACE</p><h1 id="page-title">Overview</h1></div><div class="top-actions"><label class="sound-toggle"><input type="checkbox" id="notification-sound"> Sound alerts</label><span class="secure-pill">● Private workspace</span><button class="btn primary admin-only" id="new-project-open">＋ New project</button></div></header>

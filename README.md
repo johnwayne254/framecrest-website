@@ -45,3 +45,19 @@ The current Unsplash images are temporary visual references, not commissioned Fr
 
 ## Domain
 The intended domain is `framecrest.media`. The sitemap uses this planned canonical domain. Connect it in Cloudflare Pages after the preview site has been approved and DNS is ready.
+
+## Automatic Cloudflare Pages deployments
+
+The public website and client workspace are two Cloudflare Pages projects in this same GitHub repository:
+- `framecrest-website` — public marketing site; build output directory `.`
+- `framecrest-dashboard` — secure client/team workspace; build output directory `dashboard`
+
+Both projects should use the `main` branch and Cloudflare's Git integration. Keep **Enable automatic production branch deployments** enabled for both projects. With Git integration enabled, every commit pushed to `main` triggers the connected Pages builds; no manual Deploy button or separate GitHub Actions workflow is required.
+
+Recommended monorepo build-watch paths:
+- Public website: include all paths, exclude `dashboard/**`.
+- Dashboard: include `dashboard/**`.
+
+This avoids rebuilding the public website when only dashboard files change, and avoids rebuilding the dashboard for marketing-site-only changes. The two Pages projects remain separate deployments and keep their own custom domains.
+
+See [CLOUDFLARE_DEPLOYMENT.md](CLOUDFLARE_DEPLOYMENT.md) for the full setup and troubleshooting checklist.
