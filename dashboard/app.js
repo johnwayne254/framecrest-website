@@ -352,7 +352,7 @@
     $("#clients-view").classList.toggle("hidden",!isAdmin());
     $(".editor-only").forEach(el=>el.classList.toggle("hidden",role()!=="editor"));
     $("#messages-nav").classList.toggle("hidden",role()==="editor");
-    const financeNav=$(' .nav-item[data-view="finance"]'.trim());if(financeNav)financeNav.classList.toggle("hidden",role()!=="admin"&&role()!=="client");$("#finance-view").classList.toggle("hidden",role()!=="admin"&&role()!=="client");
+    const financeNav=$(".nav-item[data-view=\"finance\"]");if(financeNav)financeNav.classList.toggle("hidden",role()!=="admin"&&role()!=="client");$("#finance-view").classList.toggle("hidden",role()!=="admin"&&role()!=="client");
     showApp(); await refresh(); await subscribeToNotifications();
   }
   async function refreshClients(){
