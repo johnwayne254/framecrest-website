@@ -459,28 +459,41 @@
   }
   function renderTeam(){
     const counts={};projects.forEach(p=>{if(p.editor_id)counts[p.editor_id]=(counts[p.editor_id]||0)+1;if(p.qa_id)counts[p.qa_id]=(counts[p.qa_id]||0)+1;});
-    $("#team-table").innerHTML=team.map(m=>`<tr><td><strong>${safe(m.full_name||"Unnamed team member")}</strong></td><td><select class="inline-select team-role" data-id="${m.id}">${["editor","qa"].map(r=>`<option value="${r}" ${m.role===r?"selected":""}>${r==="qa"?"QA":r[0].toUpperCase()+r.slice(1)}</option>`).join("")}</select></td><td>${counts[m.id]||0}</td><td><span class="status ${m.is_active===false?"cancelled":"delivered"}">${m.is_active===false?"Disabled":"Active"}</span></td><td><button class="btn secondary team-save" data-id="${m.id}" type="button">Save role</button> <button class="btn secondary team-toggle" data-id="${m.id}" data-active="${m.is_active===false?"false":"true"}" type="button">${m.is_active===false?"Enable":"Disable"}</button> <button class="btn secondary team-delete" data-id="${m.id}" type="button">Delete</button></td></tr>`).join("")||'<tr><td colspan="5" class="empty">No team accounts found.</td></tr>';
-    $$(".team-save").forEach(btn=>btn.addEventListener("click",async()=>{const select=$(`.team-role[data-id="${btn.dataset.id}"]`);btn.disabled=true;const {error}=await db.from("profiles").update({role:select.value}).eq("id",btn.dataset.id);btn.disabled=false;if(error){toast("Could not update role: "+error.message);return;}toast("Team role updated.");await refresh();}));
-    $$(".team-toggle").forEach(btn=>btn.addEventListener("click",async()=>{
-      const member=team.find(x=>x.id===btn.dataset.id);if(!member)return;
-      const disabling=btn.dataset.active==="true",action=disabling?"disable":"enable";
-      if(!window.confirm((disabling?"Disable":"Enable")+" "+(member.full_name||"this team member")+"?"))return;
-      btn.disabled=true;
-      try{const {data,error}=await db.functions.invoke("manage-team-account",{body:{user_id:member.id,action}});if(error)throw error;if(data?.error)throw new Error(data.error);toast(disabling?"Staff account disabled.":"Staff account enabled.");await refresh();}
-      catch(err){toast("Could not "+action+" account: "+(err.message||"Please try again."));console.error("FrameCrest staff account:",err);}
-      finally{btn.disabled=false;}
-    }));
-    $$(".team-delete").forEach(btn=>btn.addEventListener("click",async()=>{
-      const member=team.find(x=>x.id===btn.dataset.id);if(!member)return;
-      const assigned=counts[member.id]||0;
-      const warning='Permanently delete '+(member.full_name||"this team member")+'? This removes their login and profile. '+(assigned?assigned+" assigned project(s) will become unassigned. ":"")+'This cannot be undone.';
-      if(!window.confirm(warning))return;
-      btn.disabled=true;
-      try{const {data,error}=await db.functions.invoke("manage-team-account",{body:{user_id:member.id,action:"delete"}});if(error)throw error;if(data?.error)throw new Error(data.error);toast("Staff account deleted.");await refresh();}
-      catch(err){toast("Could not delete account: "+(err.message||"Please try again."));console.error("FrameCrest staff deletion:",err);}
-      finally{btn.disabled=false;}
-    }));
+    $("#team-table").innerHTML=team.map(m=>`<tr><td><button class="team-name-link" data-history-id="${m.id}" type="button">${safe(m.full_name||"Unnamed team member")}</button></td><td><select class="inline-select team-role" data-id="${m.id}">${["editor","qa"].map(r=>`<option value="${r}" ${m.role===r?"selected":""}>${r==="qa"?"QA":"Editor"}</option>`).join("")}</select></td><td><button class="text-button team-current-work" data-id="${m.id}" type="button">${counts[m.id]||0} · View projects</button></td><td><span class="status ${m.is_active===false?"cancelled":"delivered"}">${m.is_active===false?"Disabled":"Active"}</span></td><td><button class="btn secondary team-edit" data-id="${m.id}" type="button">Edit details</button> <button class="btn secondary team-save" data-id="${m.id}" type="button">Save role</button> <button class="btn secondary team-toggle" data-id="${m.id}" data-active="${m.is_active===false?"false":"true"}" type="button">${m.is_active===false?"Enable":"Disable"}</button> <button class="btn secondary team-delete" data-id="${m.id}" type="button">Delete</button></td></tr>`).join("")||'<tr><td colspan="5" class="empty">No team accounts found.</td></tr>';
+    $$(".team-name-link").forEach(btn=>btn.addEventListener("click",()=>openTeamHistory(btn.dataset.historyId)));
+    $$(".team-current-work").forEach(btn=>btn.addEventListener("click",()=>openTeamHistory(btn.dataset.id,"all","assigned")));
+    $$(".team-edit").forEach(btn=>btn.addEventListener("click",()=>{const m=team.find(x=>x.id===btn.dataset.id);if(!m)return;const f=$("#team-edit-form");f.elements.id.value=m.id;f.elements.full_name.value=m.full_name||"";f.elements.role.value=m.role;$("#team-edit-message").textContent="";$("#team-edit-modal").classList.remove("hidden");}));
+    $$(".team-save").forEach(btn=>btn.addEventListener("click",async()=>{const select=$(`.team-role[data-id="${btn.dataset.id}"]`);btn.disabled=true;const {error}=await db.from("profiles").update({role:select.value}).eq("id",btn.dataset.id).eq("account_type","staff");btn.disabled=false;if(error){toast("Could not update role: "+error.message);return;}toast("Team role updated.");await refresh();}));
+    $$(".team-toggle").forEach(btn=>btn.addEventListener("click",async()=>{const member=team.find(x=>x.id===btn.dataset.id);if(!member)return;const disabling=btn.dataset.active==="true",action=disabling?"disable":"enable";if(!window.confirm((disabling?"Disable":"Enable")+" "+(member.full_name||"this team member")+"?"))return;btn.disabled=true;try{const {data,error}=await db.functions.invoke("manage-team-account",{body:{user_id:member.id,action}});if(error)throw error;if(data?.error)throw new Error(data.error);toast(disabling?"Staff account disabled.":"Staff account enabled.");await refresh();}catch(err){toast("Could not "+action+" account: "+(err.message||"Please try again."));}finally{btn.disabled=false;}}));
+    $$(".team-delete").forEach(btn=>btn.addEventListener("click",async()=>{const member=team.find(x=>x.id===btn.dataset.id);if(!member)return;const assigned=counts[member.id]||0;const warning="Permanently delete "+(member.full_name||"this team member")+"? This removes their login and profile. "+(assigned?assigned+" assigned project(s) will become unassigned. ":"")+"This cannot be undone.";if(!window.confirm(warning))return;btn.disabled=true;try{const {data,error}=await db.functions.invoke("manage-team-account",{body:{user_id:member.id,action:"delete"}});if(error)throw error;if(data?.error)throw new Error(data.error);toast("Staff account deleted.");await refresh();}catch(err){toast("Could not delete account: "+(err.message||"Please try again."));}finally{btn.disabled=false;}}));
   }
+  $("#team-edit-form").addEventListener("submit",async e=>{e.preventDefault();if(!isAdmin())return;const f=e.currentTarget,button=f.querySelector('button[type="submit"]');button.disabled=true;try{const {error}=await db.from("profiles").update({full_name:f.elements.full_name.value.trim(),role:f.elements.role.value}).eq("id",f.elements.id.value).eq("account_type","staff");if(error)throw error;$("#team-edit-modal").classList.add("hidden");toast("Staff details updated.");await refresh();}catch(err){$("#team-edit-message").textContent=err.message||"Could not update staff details.";}finally{button.disabled=false;}});
+  let teamHistoryMember=null,teamHistoryMode="activity",teamHistoryActivities=[];
+  async function openTeamHistory(memberId,period="all",mode="activity"){
+    const member=team.find(x=>x.id===memberId);if(!member)return;teamHistoryMember=member;teamHistoryMode=mode;
+    $("#team-history-title").textContent=member.full_name||"Team member";$("#team-history-subtitle").textContent=member.role==="qa"?"QA reviewer work history":"Editor work history";
+    $("#team-history-period").value=period;$("#team-history-day").value=new Date().toISOString().slice(0,10);$("#team-history-month").value=new Date().toISOString().slice(0,7);$("#team-history-year").value=new Date().getFullYear();
+    $("#team-history-modal").classList.remove("hidden");await renderTeamHistory();
+  }
+  async function renderTeamHistory(){
+    if(!teamHistoryMember)return;const period=$("#team-history-period").value;
+    ["day","month","year"].forEach(k=>$("#team-history-"+k+"-wrap").classList.toggle("hidden",period!==k));
+    const target=teamHistoryMember,assigned=projects.filter(p=>teamHistoryMode==="assigned"?(target.role==="qa"?p.qa_id===target.id:p.editor_id===target.id):(p.editor_id===target.id||p.qa_id===target.id));
+    const {data,error}=await db.from("project_activity").select("id,project_id,actor_id,actor_name,activity_type,message,created_at,projects(id,project_code,name,service,status,qa_status,due_date,client_id)").eq("actor_id",target.id).order("created_at",{ascending:false}).limit(500);
+    if(error){console.error("Team activity history:",error);$("#team-history-results").innerHTML='<p class="empty">Could not load activity history. Check project activity permissions.</p>';return;}
+    let activities=data||[];const inRange=value=>{const d=String(value||"").slice(0,10);if(period==="day")return d===$("#team-history-day").value;if(period==="month")return d.slice(0,7)===$("#team-history-month").value;if(period==="year")return d.slice(0,4)===$("#team-history-year").value;return true;};
+    activities=activities.filter(x=>inRange(x.created_at));
+    const unique=new Map();activities.forEach(x=>{const p=x.projects;if(p)unique.set(p.id,{...p,lastActivity:x.created_at,activityMessage:x.message,activityType:x.activity_type});});
+    const assignedFiltered=assigned.filter(p=>period==="all"||inRange(p.created_at)||inRange(p.due_date));
+    const activityProjects=[...unique.values()];
+    const projectList=teamHistoryMode==="assigned"?assignedFiltered:activityProjects;
+    const activitiesHtml=activities.map(x=>`<div class="team-history-event"><span class="team-history-date">${safe(new Date(x.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"}))}</span><strong>${safe(x.projects?.project_code||"Project")} · ${safe(x.projects?.name||"")}</strong><p>${safe(x.message)}</p></div>`).join("");
+    const projectHtml=projectList.map(p=>`<article class="team-history-project"><div><strong>${safe(p.project_code||"Project")} · ${safe(p.name)}</strong><p>${safe(p.service||"")} · Due ${date(p.due_date)} · ${safe(p.status||"")}</p></div><button class="btn secondary team-project-open" data-id="${p.id}" type="button">View details</button></article>`).join("");
+    $("#team-history-results").innerHTML=`<div class="team-history-summary"><strong>${projectList.length}</strong> ${teamHistoryMode==="assigned"?"currently assigned projects":"projects with recorded activity"} <span>${activities.length} recorded actions</span></div>${projectHtml||'<p class="empty">No matching projects found for this period.</p>'}${teamHistoryMode==="activity"?'<h3>Recorded work activity</h3>'+(activitiesHtml||'<p class="empty">No recorded actions for this period.</p>'):""}`;
+    $$(".team-project-open").forEach(btn=>btn.addEventListener("click",()=>showTeamProject(btn.dataset.id)));
+  }
+  ["team-history-period","team-history-day","team-history-month","team-history-year"].forEach(id=>$("#"+id).addEventListener("change",renderTeamHistory));
+  function showTeamProject(projectId){const p=projects.find(x=>x.id===projectId);if(!p)return;$("#team-project-title").textContent=(p.project_code||"Project")+" · "+p.name;const fields=[["Client",p.clients?.name||"—"],["Service",p.service],["Quantity",p.quantity],["Due date",date(p.due_date)],["Status",p.status],["Quality check",p.qa_status||"Not started"],["Brief",p.brief||"—"],["Project folder / delivery link",p.folder_url||"—"]];$("#team-project-details").innerHTML=fields.map(([label,value])=>`<div><small>${safe(label)}</small><strong>${safe(value)}</strong></div>`).join("");$("#team-project-modal").classList.remove("hidden");}
   function renderProjects(){
     const term=($("#project-search")?.value||"").toLowerCase();
     const clientView=role()==="client";
