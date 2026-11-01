@@ -76,3 +76,8 @@
 #performance-view th{white-space:normal;line-height:1.4}
 #performance-view td{vertical-align:middle}
 @media(max-width:650px){.performance-filters{align-items:stretch}.performance-filters label{width:100%}.performance-date-controls{width:100%}.performance-date-controls label{width:100%}}
+
+.editor-performance-reviews{padding:18px 22px;display:grid;gap:12px}
+.editor-performance-reviews .editor-feedback-item{border:1px solid var(--line);padding:14px;background:#fff}
+.editor-performance-reviews .editor-feedback-item p{margin:9px 0;color:var(--muted);line-height:1.6}
+.editor-performance-reviews .editor-feedback-item small{color:var(--muted)}
