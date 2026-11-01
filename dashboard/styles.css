@@ -42,3 +42,8 @@
 .report-output h4{font:600 13px Montserrat;color:var(--navy);margin:20px 0 8px}
 .report-output .table-wrap{margin-top:18px}
 @media(max-width:600px){.report-export-actions{justify-content:stretch}.report-export-actions .btn{flex:1}}
+
+.report-history-card{margin-top:16px}
+.report-history-card .card-heading{padding:18px 20px}
+.report-history-card table{min-width:600px}
+.report-history-card .btn{padding:8px 12px}
