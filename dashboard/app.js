@@ -105,8 +105,10 @@
   }
   function renderReportOutput(){
     const id=$("#report-category").value,range=reportDateRange(),host=$("#report-workspace");
-    if(!range.valid){host.querySelector(".report-empty").innerHTML='<p class="message">Please correct the selected date range.</p>';return;}
-    if(!id){host.querySelector(".report-empty").innerHTML='<div class="report-empty"><span class="report-empty-icon">▥</span><strong>Your reports will appear here</strong><p>Select a report category to view real dashboard data for the chosen period.</p></div>';return;}
+    let output=host.querySelector(".report-output");
+    if(!output){output=document.createElement("div");output.className="report-output";host.append(output);}
+    if(!range.valid){output.innerHTML='<p class="message">Please correct the selected date range.</p>';return;}
+    if(!id){output.innerHTML='<div class="report-empty"><span class="report-empty-icon">▥</span><strong>Your reports will appear here</strong><p>Select a report category to view real dashboard data for the chosen period.</p></div>';return;}
     const within=(v)=>{if(!v)return false;const d=String(v).slice(0,10);return (!range.start||d>=range.start)&&(!range.end||d<=range.end);};
     const periodProjects=projects.filter(p=>within(p.created_at));
     const periodPayments=paymentRecords.filter(p=>within(p.payment_date));
@@ -145,9 +147,6 @@
     }else if(id==="feedback"){
       html='<div class="report-empty"><strong>Feedback reports are not available in this workspace yet</strong><p>Client feedback summaries will be connected in the next reporting update.</p></div>';
     }
-    host.querySelector(".report-empty")?.remove();
-    let output=host.querySelector(".report-output");
-    if(!output){output=document.createElement("div");output.className="report-output";host.append(output);}
     output.innerHTML=html;
   }
   $("#report-category").addEventListener("change",renderReportWorkspace);
