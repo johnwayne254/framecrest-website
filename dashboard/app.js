@@ -350,6 +350,7 @@
     $$(".client-only").forEach(el=>el.classList.toggle("hidden",role()!=="client"));
     const reportsNav=$("#reports-nav");if(reportsNav)reportsNav.classList.toggle("hidden",!["admin","client"].includes(role()));const monthlySummaryButton=$("#generate-monthly-summary");if(monthlySummaryButton)monthlySummaryButton.classList.toggle("hidden",!isAdmin());
     $("#clients-view").classList.toggle("hidden",!isAdmin());
+    $(".editor-only").forEach(el=>el.classList.toggle("hidden",role()!=="editor"));
     $("#messages-nav").classList.toggle("hidden",role()==="editor");
     const financeNav=$(' .nav-item[data-view="finance"]'.trim());if(financeNav)financeNav.classList.toggle("hidden",role()!=="admin"&&role()!=="client");$("#finance-view").classList.toggle("hidden",role()!=="admin"&&role()!=="client");
     showApp(); await refresh(); await subscribeToNotifications();
@@ -536,6 +537,63 @@
       $("#project-message").textContent="";$("#project-modal").classList.remove("hidden");
     }));
   }
+  function openEditorReview(projectId){
+    const p=projects.find(x=>x.id===projectId);if(!p||!p.editor_id)return;
+    if(role()==="qa"&&p.qa_id!==user.id)return;
+    const old=qualityReviews.find(x=>x.project_id===projectId),f=$("#editor-review-form");
+    f.elements.project_id.value=p.id;f.elements.editor_id.value=p.editor_id;
+    f.elements.quality_score.value=old?old.quality_score:85;f.elements.feedback.value=old?old.feedback:"";
+    $("#editor-review-title").textContent="Review · "+(p.project_code||p.name);
+    $("#editor-review-message").textContent="";$("#editor-review-modal").classList.remove("hidden");
+  }
+  $("#editor-review-form").addEventListener("submit",async e=>{
+    e.preventDefault();if(!isAdmin()&&role()!=="qa")return;
+    const f=e.currentTarget,b=f.querySelector('button[type="submit"]'),projectId=f.elements.project_id.value;
+    const p=projects.find(x=>x.id===projectId);if(!p|| (role()==="qa"&&p.qa_id!==user.id))return;
+    const old=qualityReviews.find(x=>x.project_id===projectId);
+    const payload={project_id:projectId,editor_id:p.editor_id,reviewer_id:user.id,quality_score:Number(f.elements.quality_score.value),feedback:f.elements.feedback.value.trim()};
+    b.disabled=true;$("#editor-review-message").textContent="Saving review…";
+    try{
+      const result=old?await db.from("editor_quality_reviews").update(payload).eq("id",old.id):await db.from("editor_quality_reviews").insert(payload);
+      if(result.error)throw result.error;
+      $("#editor-review-modal").classList.add("hidden");toast("Quality score and feedback saved.");await refresh();
+    }catch(err){$("#editor-review-message").textContent=err.message||"Could not save review.";}
+    finally{b.disabled=false;}
+  });
+  function renderEditorQualityPanel(){
+    const panel=$("#editor-quality-panel");if(!panel)return;
+    const editorView=role()==="editor";panel.classList.toggle("hidden",!editorView);if(!editorView)return;
+    const reviews=qualityReviews.filter(x=>x.editor_id===user.id);
+    const average=reviews.length?Math.round(reviews.reduce((sum,x)=>sum+Number(x.quality_score),0)/reviews.length):null;
+    const items=reviews.map(r=>{
+      const p=projects.find(x=>x.id===r.project_id);
+      return '<article class="editor-feedback-item"><div><strong>'+safe(p?p.project_code||p.name:"Project")+'</strong><span class="editor-score">'+r.quality_score+'/100</span></div><p>'+safe(r.feedback)+'</p><small>'+safe(new Date(r.created_at).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"}))+'</small></article>';
+    }).join("");
+    $("#editor-quality-summary").innerHTML='<div class="editor-quality-metrics"><div><small>Reviews received</small><strong>'+reviews.length+'</strong></div><div><small>Average quality score</small><strong>'+(average===null?"—":average+"/100")+'</strong></div></div>'+(items||'<p class="empty">No quality feedback yet. Reviews from QA and Admin will appear here.</p>');
+  }
+  function editorReportRows(){
+    const header=["Project reference","Project name","Client","Service","Quantity","Due date","Status","QA status","Quality score","Feedback"];
+    return [header,...projects.map(p=>{const r=qualityReviews.find(x=>x.project_id===p.id);return [p.project_code||"",p.name||"",p.clients&&p.clients.name||"",p.service||"",p.quantity||"",p.due_date||"",p.status||"",p.qa_status||"",r?r.quality_score:"",r?r.feedback:""];})];
+  }
+  function exportEditorReport(format){
+    const rows=editorReportRows(),filename="FrameCrest-Editor-Project-Report";
+    if(format==="csv"){
+      const csv=rows.map(row=>row.map(v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+      downloadReport(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}),filename+".csv");return;
+    }
+    const esc=v=>String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    if(format==="excel"){
+      const xml='<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Projects"><Table>'+rows.map(row=>"<Row>"+row.map(v=>'<Cell><Data ss:Type="String">'+esc(v)+'</Data></Cell>').join("")+"</Row>").join("")+'</Table></Worksheet></Workbook>';
+      downloadReport(new Blob([xml],{type:"application/vnd.ms-excel"}),filename+".xls");return;
+    }
+    const w=window.open("","_blank");if(!w){toast("Allow pop-ups to print or save as PDF.");return;}
+    w.document.write('<html><head><title>'+filename+'</title><style>body{font:12px Arial;padding:24px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:7px;text-align:left}</style></head><body><h1>FrameCrest Studios</h1><h2>Editor project report</h2><table>'+rows.map((row,i)=>"<tr>"+row.map(v=>i===0?"<th>"+esc(v)+"</th>":"<td>"+esc(v)+"</td>").join("")+"</tr>").join("")+'</table></body></html>');
+    w.document.close();w.focus();w.print();
+  }
+  $("#editor-export-csv").addEventListener("click",()=>exportEditorReport("csv"));
+  $("#editor-export-excel").addEventListener("click",()=>exportEditorReport("excel"));
+  $("#editor-export-pdf").addEventListener("click",()=>exportEditorReport("pdf"));
+
   function openProjectDetails(projectId){
     const p=projects.find(x=>x.id===projectId);if(!p)return;
     $("#details-title").textContent=p.name;
