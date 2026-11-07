@@ -517,7 +517,7 @@
       else if(closed){label="Cancelled";kind="normal";}
       return '<span class="deadline-date">'+safe(date(p.due_date))+'</span><small class="deadline-label '+kind+'">'+label+'</small>';
     }; const matchesTerm=p=>(p.name+" "+p.project_code+" "+p.service+" "+(p.clients?.name||"")).toLowerCase().includes(term); const rows=projects.filter(p=>matchesTerm(p)&&(projectStatusFilter==="all"||(projectStatusFilter==="overdue"?!!p.due_date&&p.due_date<today&&!["Delivered","Cancelled"].includes(p.status):projectStatusFilter==="revisions"?(p.status==="Revisions"||p.qa_status==="Changes required"):projectStatusFilter==="active"?["Awaiting files","In progress","Revisions"].includes(p.status):projectStatusFilter==="qa"?p.status==="In QA":p.status==="Delivered")));
-    const allowedStatuses=isAdmin()?["Awaiting files","In progress","In QA","Revisions","Delivered","Cancelled"]:["In progress","In QA","Revisions"];
+    const allowedStatuses=isAdmin()?["Awaiting files","In progress","In QA","Revisions","Ready for Client Review","Delivered","Cancelled"]:["In progress","In QA","Revisions"];
     $("#projects-view h2").textContent=clientView?"Your projects":role()==="editor"?"Assigned projects":"Project register";
     $("#projects-view .toolbar p").textContent=clientView?"Follow each project's progress, deadline, instructions and delivery.":role()==="editor"?"Your assigned work, briefs, QA feedback and delivery deadlines.":"Track briefs, production, quality checks and delivery.";
     const total=projects.length;
@@ -534,13 +534,14 @@
       const status='<td><span class="status '+statusClass(p.status)+'">'+safe(p.status)+'</span></td>';
       const qa='<td><span class="status '+statusClass(p.qa_status)+'">'+safe(p.qa_status||"Not started")+'</span></td>';
       const reviewButton=(isAdmin()||role()==="qa")&&p.editor_id?'<button class="btn secondary project-review" data-id="'+p.id+'" type="button">Score editor</button> ':"";
-      const actions='<td>'+reviewButton+'<button class="btn secondary project-details" data-id="'+p.id+'" type="button">View details</button> <button class="btn secondary project-activity" data-id="'+p.id+'" type="button">Updates</button></td>';
+      const clientApprovalButton=clientView&&p.status==="Ready for Client Review"?'<button class="btn primary project-client-approve" data-id="'+p.id+'" type="button">Approve & deliver</button> ':""; const actions='<td>'+clientApprovalButton+reviewButton+'<button class="btn secondary project-details" data-id="'+p.id+'" type="button">View details</button> <button class="btn secondary project-activity" data-id="'+p.id+'" type="button">Updates</button></td>';
       if(clientView)return '<tr>'+project+'<td>'+safe(p.service)+'</td><td>'+deadlineCell(p)+'</td>'+status+qa+actions+'</tr>';
       return '<tr>'+project+'<td>'+safe(p.clients?.name||"—")+'</td><td>'+safe(p.service)+'</td><td>'+safe(p.profiles?.full_name||"Unassigned")+'</td><td>'+safe(p.qa_profile?.full_name||"Unassigned")+'</td><td>'+deadlineCell(p)+'</td><td>'+(isAdmin()||role()==="editor" ? '<select class="inline-select status-change" data-id="'+p.id+'">'+allowedStatuses.map(x=>'<option '+(x===p.status?'selected':'')+'>'+x+'</option>').join("")+'</select>' : status.slice(4,-5))+'</td><td>'+(isAdmin()||role()==="qa"?'<select class="inline-select qa-change" data-id="'+p.id+'">'+["Not started","Pending review","Passed","Changes required"].map(x=>'<option '+(x===p.qa_status?'selected':'')+'>'+x+'</option>').join("")+'</select>':qa.slice(4,-5))+'</td><td>'+(isAdmin()?'<button class="btn secondary project-edit" data-id="'+p.id+'" type="button">Edit</button> ':'')+'<button class="btn secondary project-details" data-id="'+p.id+'" type="button">Details</button> <button class="btn secondary project-activity" data-id="'+p.id+'" type="button">Activity</button></td></tr>';
     }).join("")||'<tr><td colspan="'+(clientView?6:9)+'" class="empty">No matching projects.</td></tr>';
     $$(".status-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("Project status updated.");await refresh();}}));
     $$(".qa-change").forEach(el=>el.addEventListener("change",async()=>{const {error}=await db.from("projects").update({qa_status:el.value}).eq("id",el.dataset.id);if(error)toast(error.message);else{toast("QA status updated.");await refresh();}}));
-    $$(".project-review").forEach(btn=>btn.addEventListener("click",()=>openEditorReview(btn.dataset.id)));
+    $(".project-review").forEach(btn=>btn.addEventListener("click",()=>openEditorReview(btn.dataset.id)));
+    $(".project-client-approve").forEach(btn=>btn.addEventListener("click",async()=>{const p=projects.find(x=>x.id===btn.dataset.id);if(!p||role()!=="client"||p.status!=="Ready for Client Review")return;if(!window.confirm("Approve the finished work and mark this project as delivered?"))return;btn.disabled=true;btn.textContent="Approving…";try{const {error}=await db.rpc("client_approve_project",{p_project_id:p.id});if(error)throw error;toast("Project approved and marked as delivered.");await refresh();}catch(err){toast("Could not approve project: "+(err.message||"Please try again."));btn.disabled=false;btn.textContent="Approve & deliver";}}));
     $$(".project-details").forEach(btn=>btn.addEventListener("click",()=>openProjectDetails(btn.dataset.id)));
     $$(".project-activity").forEach(btn=>btn.addEventListener("click",()=>openProjectActivity(btn.dataset.id)));
     $$(".project-edit").forEach(btn=>btn.addEventListener("click",()=>{
@@ -794,6 +795,7 @@
     $("#details-activity-open").dataset.id=p.id;
     $("#details-revision-open").dataset.id=p.id;
     $("#details-revision-open").classList.toggle("hidden",role()!=="client"||p.status==="Delivered"||p.status==="Cancelled");
+    const approvalAction=$("#details-client-approve");if(approvalAction){approvalAction.classList.toggle("hidden",role()!=="client"||p.status!=="Ready for Client Review");approvalAction.dataset.id=p.id;}
     $("#details-message-open").dataset.id=p.id;
     $("#details-message-open").classList.toggle("hidden",role()==="editor");
     $("#project-details-modal").classList.remove("hidden");
@@ -810,7 +812,7 @@
     const project=projects.find(p=>p.id===form.project_id.value);if(!project||role()!=="client")return;
     const message=String(form.message.value||"").trim();if(!message){$("#revision-message").textContent="Please describe the change you need.";return;}
     submit.disabled=true;submit.textContent="Submitting…";$("#revision-message").textContent="Sending your request…";
-    try{const {error}=await db.from("project_feedback").insert({project_id:project.id,client_id:profile.client_id,message});if(error)throw error;$("#revision-modal").classList.add("hidden");toast("Your change request has been sent.");}
+    try{const {error}=await db.from("project_feedback").insert({project_id:project.id,client_id:profile.client_id,message});if(error)throw error;if(project.status==="Ready for Client Review"){const {error:workflowError}=await db.rpc("client_request_project_revision",{p_project_id:project.id});if(workflowError)throw workflowError;}$("#revision-modal").classList.add("hidden");toast("Your change request has been sent.");await refresh();}
     catch(err){$("#revision-message").textContent="Could not submit request: "+(err.message||"Please try again.");}
     finally{submit.disabled=false;submit.textContent="Submit request";}
   });
