@@ -816,6 +816,7 @@
     catch(err){$("#revision-message").textContent="Could not submit request: "+(err.message||"Please try again.");}
     finally{submit.disabled=false;submit.textContent="Submit request";}
   });
+  $("#details-client-approve").addEventListener("click",async()=>{const p=projects.find(x=>x.id===$("#details-client-approve").dataset.id);if(!p||role()!=="client"||p.status!=="Ready for Client Review")return;if(!window.confirm("Approve the finished work and mark this project as delivered?"))return;const button=$("#details-client-approve");button.disabled=true;button.textContent="Approving…";try{const {error}=await db.rpc("client_approve_project",{p_project_id:p.id});if(error)throw error;$("#project-details-modal").classList.add("hidden");toast("Project approved and marked as delivered.");await refresh();}catch(err){toast("Could not approve project: "+(err.message||"Please try again."));button.disabled=false;button.textContent="Approve & deliver";}});
   $("#details-message-open").addEventListener("click",()=>{const id=$("#details-message-open").dataset.id;$("#project-details-modal").classList.add("hidden");openProjectMessages(id);});
   async function openProjectMessages(projectId){
     const p=projects.find(x=>x.id===projectId);if(!p)return;
