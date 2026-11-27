@@ -161,7 +161,7 @@
     const updateComparison = () => {
       const value = Math.min(100, Math.max(0, Number(range.value)));
       frame.style.setProperty("--split", value + "%");
-      range.setAttribute("aria-valuetext", value + " percent before, " + (100 - value) + " percent after");
+      range.setAttribute("aria-valuetext", value + " percent edited, " + (100 - value) + " percent original");
     };
     range.addEventListener("input", updateComparison);
     updateComparison();
