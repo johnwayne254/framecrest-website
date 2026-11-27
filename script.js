@@ -1,8 +1,8 @@
 (() => {
   const config = window.FRAMECREST_CONFIG || {};
-  const cleanPhone = String(config.whatsappNumber || "").replace(/\D/g, "");
+  const cleanPhone = String(config.whatsappNumber || "254717719639").replace(/\D/g, "");
   const whatsappReady = /^\d{8,15}$/.test(cleanPhone);
-  const formSubmitEmail = String(config.formSubmitEmail || "").trim();
+  const formSubmitEmail = String(config.formSubmitEmail || "framecrest.media@gmail.com").trim();
   const instagramUrl = String(config.instagramUrl || "").trim();
 
   // Mobile navigation
@@ -80,79 +80,24 @@
     }
   });
 
-  // Configure the project enquiry form to deliver through FormSubmit.
+  // Keep the enquiry form on FormSubmit's standard POST flow.
+  // This avoids AJAX/CORS failures and works even if optional config.js is cached or unavailable.
   const form = document.getElementById("contact-form");
   const status = document.getElementById("form-status");
   const submitButton = form?.querySelector('button[type="submit"]');
-  const formEmailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formSubmitEmail);
-  const formSubmitEndpoint = formEmailIsValid
-    ? "https://formsubmit.co/ajax/" + formSubmitEmail
-    : "";
+  const formEmailIsValid = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formSubmitEmail);
 
-  if (form && submitButton) {
-    if (!formEmailIsValid) {
-      submitButton.disabled = true;
-      submitButton.textContent = "Enquiry form unavailable";
-      if (status) status.textContent =
-        "The enquiry form is temporarily unavailable. Please email FrameCrest directly.";
-    } else {
-      submitButton.disabled = false;
-      submitButton.textContent = "Send project enquiry ↗";
-      if (status) status.textContent =
-        "Your enquiry will be sent to FrameCrest. We use the details only to review and respond to your project request.";
-    }
-  }
-
-  form?.addEventListener("submit", async event => {
-    event.preventDefault();
-    if (!formEmailIsValid || !form) return;
-    if (!form.reportValidity()) return;
-
-    // FormSubmit uses this hidden honeypot field to filter automated submissions.
-    if (form.querySelector('[name="_honey"]')?.value) return;
-
+  if (form && submitButton && formEmailIsValid) {
+    form.action = "https://formsubmit.co/" + formSubmitEmail;
+    form.method = "POST";
+    submitButton.disabled = false;
+    if (status) status.textContent =
+      "Your enquiry will be sent to FrameCrest. We will reply using the email address you provide.";
+  } else if (form && submitButton) {
     submitButton.disabled = true;
-    submitButton.setAttribute("aria-busy", "true");
-    submitButton.textContent = "Sending…";
-    if (status) status.textContent = "Sending your project enquiry…";
-
-    try {
-      const formData = new FormData(form);
-      const payload = Object.fromEntries(formData.entries());
-      payload._replyto = String(formData.get("email") || "");
-      payload._subject = "New FrameCrest Studios project enquiry";
-
-      const response = await fetch(formSubmitEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-      let result = {};
-      try {
-        result = await response.json();
-      } catch (_) {
-        result = {};
-      }
-      if (!response.ok || String(result.success).toLowerCase() === "false") {
-        throw new Error(result.message || "The form service returned an error.");
-      }
-
-      form.reset();
-      if (status) status.textContent =
-        "Thank you. Your project enquiry has been submitted. We'll respond using the email address you provided.";
-      submitButton.textContent = "Enquiry submitted";
-    } catch (error) {
-      if (status) status.textContent =
-        "We couldn't submit your enquiry just now. Please try again or email hello@framecrest.media.";
-      submitButton.disabled = false;
-      submitButton.textContent = "Try again ↗";
-    } finally {
-      submitButton.removeAttribute("aria-busy");
-    }
-  });
+    if (status) status.textContent =
+      "The enquiry form is temporarily unavailable. Please email framecrest.media@gmail.com directly.";
+  }
 
   // Interactive before/after photo-editing comparison on the Services page.
   document.querySelectorAll(".before-after-frame").forEach(frame => {
