@@ -119,9 +119,19 @@
       </article>
 
       <article class="service-detail service-staging" id="virtual-staging">
-        <div class="service-detail-visual">
-          <img src="https://armox.ai/landing/architecture/clusters/virtual-staging-ai-hub-hero.webp" alt="Virtually staged contemporary living room with neutral furniture and natural daylight" loading="lazy" decoding="async">
-          <span class="visual-caption">VIRTUAL STAGING · EMPTY / STAGED</span>
+        <div class="service-detail-visual photo-before-after">
+          <div class="before-after-frame staging-before-after-frame" style="--split:50%" data-after-label="virtually staged" data-before-label="empty room">
+            <img src="assets/framecrest-virtual-staging-before.jpg" alt="Empty modern living room before virtual staging" loading="lazy" decoding="async">
+            <div class="before-after-after-overlay" aria-hidden="true">
+              <img src="assets/framecrest-virtual-staging-after.jpg" alt="" loading="lazy" decoding="async">
+            </div>
+            <span class="before-after-label after-label">VIRTUALLY STAGED</span>
+            <span class="before-after-label before-label">EMPTY ROOM</span>
+            <span class="before-after-divider" aria-hidden="true"><span>↔</span></span>
+            <input class="before-after-range" type="range" min="0" max="100" value="50" aria-label="Move the divider to compare the empty room with the virtually staged room" aria-valuetext="50 percent virtually staged, 50 percent empty room">
+          </div>
+          <span class="visual-caption">VIRTUAL STAGING · DRAG TO COMPARE</span>
+          <p class="before-after-note">See how digital furniture and décor can transform an empty room. Drag the divider to compare the original space with the virtually staged version.</p>
         </div>
         <div class="service-detail-copy">
           <div class="service-number">02 <span>CORE SERVICE</span></div>
