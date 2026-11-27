@@ -146,7 +146,7 @@
       submitButton.textContent = "Enquiry submitted";
     } catch (error) {
       if (status) status.textContent =
-        "We couldn't submit your enquiry just now. Please try again or email framecrest.media@gmail.com.";
+        "We couldn't submit your enquiry just now. Please try again or email hello@framecrest.media.";
       submitButton.disabled = false;
       submitButton.textContent = "Try again ↗";
     } finally {
