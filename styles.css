@@ -1908,9 +1908,9 @@ body.about-page{
 .photo-before-after{background:#142a42}
 .before-after-frame{--split:50%;position:relative;width:100%;aspect-ratio:1.34;overflow:hidden;isolation:isolate;background:#d8d5ce;touch-action:pan-y}
 .before-after-frame>img,.before-after-after-overlay img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-.before-after-frame>img{filter:brightness(.70) saturate(.62) contrast(.91) sepia(.06)}
+
 .before-after-after-overlay{position:absolute;inset:0 auto 0 0;width:var(--split);overflow:hidden;z-index:2}
-.before-after-after-overlay img{width:100%;max-width:none;filter:brightness(1.08) saturate(1.12) contrast(1.04)}
+.before-after-after-overlay img{width:100%;max-width:none}
 .before-after-label{position:absolute;top:15px;z-index:4;padding:7px 11px;background:rgba(20,42,66,.88);color:#fff;font-size:8px;font-weight:700;letter-spacing:1.5px;pointer-events:none}
 .before-label{right:15px}
 .after-label{left:15px}
