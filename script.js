@@ -70,8 +70,47 @@
     }
   });
 
-  // Enquiry forms use native HTML POST to FormSubmit.
-  // Do not intercept submission with fetch: FormSubmit's standard endpoint handles redirects and confirmation.
+  // Submit enquiries through FormSubmit's AJAX endpoint and acknowledge success in place.
+  document.querySelectorAll("form.contact-form").forEach(form => {
+    const status = form.querySelector(".form-status");
+    const submit = form.querySelector('button[type="submit"]');
+    if (!status || !submit) return;
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+
+      const originalLabel = submit.innerHTML;
+      submit.disabled = true;
+      submit.textContent = "Sending…";
+      status.textContent = "Sending your enquiry securely…";
+
+      try {
+        const response = await fetch(form.action, {
+          method: "POST",
+          body: new FormData(form),
+          headers: { Accept: "application/json" }
+        });
+        const result = await response.json();
+
+        if (!response.ok || result.success === "false" || result.success === false) {
+          throw new Error(result.message || "The form could not be submitted.");
+        }
+
+        form.reset();
+        form.querySelectorAll(".form-row, label, .form-trap, button[type='submit']").forEach(el => {
+          el.hidden = true;
+        });
+        status.textContent = "Thank you. Your enquiry has been received successfully. The FrameCrest team will review your message and get back to you.";
+        status.classList.add("form-success");
+        status.setAttribute("role", "status");
+      } catch (error) {
+        status.textContent = "We couldn't submit your enquiry just now. Please try again or email framecrest.media@gmail.com.";
+        submit.disabled = false;
+        submit.innerHTML = originalLabel;
+      }
+    });
+  });
 
   // Interactive before/after photo-editing comparison on the Services page.
   document.querySelectorAll(".before-after-frame").forEach(frame => {
