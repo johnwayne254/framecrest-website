@@ -896,29 +896,34 @@ img{color:#747b61}
 }
 
 
-/* Preserve the 2-column x 6-row portfolio, with masonry-style image heights. */
+/* Tighter, balanced portfolio tiles: preserve the two-column tile design without uneven masonry gaps. */
+.portfolio-page .portfolio-gallery-section{padding-top:68px;padding-bottom:76px}
+.portfolio-page .portfolio-section-heading{margin-bottom:30px}
 .portfolio-page .portfolio-page-grid{
   grid-template-columns:repeat(2,minmax(0,1fr));
   align-items:start;
+  gap:30px 24px;
+  row-gap:30px;
 }
 .portfolio-page .portfolio-page-grid .portfolio-work-card>a.work-image-open{
+  width:100%;
   height:auto;
   aspect-ratio:4 / 3;
 }
-.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(6n + 1)>a.work-image-open,
-.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(6n + 4)>a.work-image-open,
-.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(6n + 6)>a.work-image-open{
-  aspect-ratio:4 / 5;
+.portfolio-page .portfolio-page-grid .portfolio-work-card .work-caption{
+  min-height:58px;
+  padding-top:11px;
 }
-.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(6n + 2)>a.work-image-open,
-.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(6n + 3)>a.work-image-open,
-.portfolio-page .portfolio-page-grid .portfolio-work-card:nth-child(6n + 5)>a.work-image-open{
-  aspect-ratio:5 / 4;
+.portfolio-page .portfolio-page-grid .portfolio-work-card .work-caption h3{font-size:18px;line-height:1.25}
+@media(max-width:900px){
+  .portfolio-page .portfolio-gallery-section{padding-top:58px;padding-bottom:66px}
+  .portfolio-page .portfolio-page-grid{gap:24px 18px}
 }
 @media(max-width:650px){
-  .portfolio-page .portfolio-page-grid{
-    grid-template-columns:repeat(2,minmax(0,1fr));
-  }
+  .portfolio-page .portfolio-page-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 14px}
+  .portfolio-page .portfolio-page-grid .portfolio-work-card>a.work-image-open{aspect-ratio:4 / 3}
+  .portfolio-page .portfolio-page-grid .portfolio-work-card .work-caption{min-height:64px;padding-top:9px}
+  .portfolio-page .portfolio-page-grid .portfolio-work-card .work-caption h3{font-size:15px}
 }
 
 
