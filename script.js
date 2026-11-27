@@ -48,26 +48,16 @@
   const year = document.getElementById("year");
   if (year) year.textContent = new Date().getFullYear();
 
-  // WhatsApp stays hidden until a real business number is configured.
+  // Always send WhatsApp links directly to the configured studio number.
+  const whatsappUrl = "https://wa.me/254717719639?text=" +
+    encodeURIComponent("Hello FrameCrest, I'd like to discuss a project.");
   document.querySelectorAll("[data-whatsapp]").forEach(link => {
-    if (whatsappReady) {
-      link.href = "https://wa.me/" + cleanPhone + "?text=" +
-        encodeURIComponent("Hello FrameCrest, I'd like to discuss a project.");
-      link.removeAttribute("aria-disabled");
-      link.removeAttribute("title");
-      if (link.classList.contains("floating-whatsapp")) link.hidden = false;
-    } else {
-      if (link.classList.contains("floating-whatsapp")) {
-        link.hidden = true;
-      } else {
-        link.href = "contact.html#contact-form";
-        link.setAttribute("aria-disabled", "true");
-        link.setAttribute("title", "WhatsApp contact will be added soon");
-        const label = link.querySelector("span");
-        link.textContent = "WhatsApp contact will be available soon";
-        if (label) link.appendChild(label);
-      }
-    }
+    link.href = whatsappUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.removeAttribute("aria-disabled");
+    link.removeAttribute("title");
+    if (link.classList.contains("floating-whatsapp")) link.hidden = false;
   });
 
   // Only show social links when a real studio profile is configured.
@@ -80,24 +70,8 @@
     }
   });
 
-  // Keep the enquiry form on FormSubmit's standard POST flow.
-  // This avoids AJAX/CORS failures and works even if optional config.js is cached or unavailable.
-  const form = document.getElementById("contact-form");
-  const status = document.getElementById("form-status");
-  const submitButton = form?.querySelector('button[type="submit"]');
-  const formEmailIsValid = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formSubmitEmail);
-
-  if (form && submitButton && formEmailIsValid) {
-    form.action = "https://formsubmit.co/" + formSubmitEmail;
-    form.method = "POST";
-    submitButton.disabled = false;
-    if (status) status.textContent =
-      "Your enquiry will be sent to FrameCrest. We will reply using the email address you provide.";
-  } else if (form && submitButton) {
-    submitButton.disabled = true;
-    if (status) status.textContent =
-      "The enquiry form is temporarily unavailable. Please email framecrest.media@gmail.com directly.";
-  }
+  // Enquiry forms use native HTML POST to FormSubmit.
+  // Do not intercept submission with fetch: FormSubmit's standard endpoint handles redirects and confirmation.
 
   // Interactive before/after photo-editing comparison on the Services page.
   document.querySelectorAll(".before-after-frame").forEach(frame => {
