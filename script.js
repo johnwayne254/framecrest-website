@@ -154,6 +154,19 @@
     }
   });
 
+  // Interactive before/after photo-editing comparison on the Services page.
+  document.querySelectorAll(".before-after-frame").forEach(frame => {
+    const range = frame.querySelector(".before-after-range");
+    if (!range) return;
+    const updateComparison = () => {
+      const value = Math.min(100, Math.max(0, Number(range.value)));
+      frame.style.setProperty("--split", value + "%");
+      range.setAttribute("aria-valuetext", value + " percent before, " + (100 - value) + " percent after");
+    };
+    range.addEventListener("input", updateComparison);
+    updateComparison();
+  });
+
   // Selected-work image preview: open each gallery image in an accessible lightbox.
   const workLightbox = document.getElementById("work-lightbox");
   const workLightboxImage = document.getElementById("work-lightbox-image");
